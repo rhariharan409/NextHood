@@ -20,6 +20,13 @@ export interface SellerUser {
   created_at: string;
 }
 
+export interface ProductInventory {
+  product_id: string;
+  shop_id: string;
+  stock_quantity: string;
+  last_updated: string;
+}
+
 // In-memory queue to prevent concurrent write conflicts
 class WriteLock {
   private locked = false;

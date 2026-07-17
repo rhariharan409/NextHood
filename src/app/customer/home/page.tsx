@@ -1,10 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import { Business, fetchNearbyBusinesses } from '@/lib/overpass';
+import { Business, BusinessSearchService } from '@/lib/businessSearch';
 
 // Load Leaflet Map dynamically to avoid SSR "window is not defined" error
 const Map = dynamic(() => import('@/components/Map'), { ssr: false });
@@ -18,6 +18,7 @@ interface User {
 
 export default function CustomerHomePage() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -118,19 +119,19 @@ export default function CustomerHomePage() {
       // First attempt: 5km (5000m)
       let radius = 5000;
       console.log(`[DEBUG] 1st search attempt. Radius: ${radius}m`);
-      let results = await fetchNearbyBusinesses(coords.lat, coords.lon, query, radius);
+      let results = await BusinessSearchService.search(coords.lat, coords.lon, query, radius);
       
       // Auto-retry with 10km (10000m) if 0 results
       if (results.length === 0) {
         radius = 10000;
         console.log(`[DEBUG] 0 businesses found within 5km. Auto-retrying with larger radius: ${radius}m (10km)...`);
-        results = await fetchNearbyBusinesses(coords.lat, coords.lon, query, radius);
+        results = await BusinessSearchService.search(coords.lat, coords.lon, query, radius);
       }
 
       setBusinesses(results);
     } catch (err: any) {
       console.error('[DEBUG] Search API error:', err);
-      setSearchError(`Failed to fetch nearby businesses: ${err.message || err}`);
+      setSearchError('Unable to load nearby businesses. Please try again.');
     } finally {
       setSearching(false);
     }
@@ -174,12 +175,53 @@ export default function CustomerHomePage() {
             <span>Nexthood</span>
           </Link>
 
-          {/* Navigation Placeholders */}
+          {/* Navigation Items */}
           <nav style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-            <span style={{ fontWeight: 600, color: 'var(--primary)', cursor: 'pointer' }}>Home</span>
-            <span style={{ fontWeight: 500, color: 'var(--text-muted)', cursor: 'pointer' }}>Explore</span>
-            <span style={{ fontWeight: 500, color: 'var(--text-muted)', cursor: 'pointer' }}>Favorites</span>
-            <span style={{ fontWeight: 500, color: 'var(--text-muted)', cursor: 'pointer' }}>Profile</span>
+            <Link href="/customer/home" style={{
+              fontWeight: pathname === '/customer/home' ? 600 : 500,
+              color: pathname === '/customer/home' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)'
+            }}>
+              Home
+            </Link>
+            <Link href="/customer/smart-search" style={{
+              fontWeight: pathname === '/customer/smart-search' ? 600 : 500,
+              color: pathname === '/customer/smart-search' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)'
+            }}>
+              🔍 Smart Search
+            </Link>
+            <Link href="/customer/flashfest" style={{
+              fontWeight: pathname === '/customer/flashfest' ? 600 : 500,
+              color: pathname === '/customer/flashfest' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)'
+            }}>
+              FlashFest
+            </Link>
+            <Link href="/customer/favorites" style={{
+              fontWeight: pathname === '/customer/favorites' ? 600 : 500,
+              color: pathname === '/customer/favorites' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)'
+            }}>
+              Favorites
+            </Link>
+            <Link href="/customer/profile" style={{
+              fontWeight: pathname === '/customer/profile' ? 600 : 500,
+              color: pathname === '/customer/profile' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)'
+            }}>
+              Profile
+            </Link>
           </nav>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
