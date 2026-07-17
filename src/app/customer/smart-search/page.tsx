@@ -303,6 +303,15 @@ export default function SmartSearchPage() {
             }}>
               🔍 Smart Search
             </Link>
+            <Link href="/customer/ai-assistant" style={{
+              fontWeight: pathname === '/customer/ai-assistant' ? 600 : 500,
+              color: pathname === '/customer/ai-assistant' ? 'var(--primary)' : 'var(--text-muted)',
+              cursor: 'pointer',
+              textDecoration: 'none',
+              transition: 'var(--transition)'
+            }}>
+              🤖 AI Assistant
+            </Link>
             <Link href="/customer/flashfest" style={{
               fontWeight: pathname === '/customer/flashfest' ? 600 : 500,
               color: pathname === '/customer/flashfest' ? 'var(--primary)' : 'var(--text-muted)',
