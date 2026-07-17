@@ -42,6 +42,7 @@ export default function CheckoutPage() {
   const [orderConfirmed, setOrderConfirmed] = useState(false);
   const [confirmedOrderId, setConfirmedOrderId] = useState('');
   const [confirmedDeliveryTime, setConfirmedDeliveryTime] = useState('');
+  const [logisticsPlan, setLogisticsPlan] = useState<any>(null);
   const [ws, setWs] = useState<WebSocket | null>(null);
 
   // Connect to WebSocket server for broadcasting changes
@@ -254,13 +255,71 @@ export default function CheckoutPage() {
     if (cartItems.length === 0 || !shop) return;
     
     const orderId = 'NH-' + Math.floor(100000 + Math.random() * 900000);
+
+    // Calculate logistics optimizer attributes
+    const perishables = ['cake', 'muffin', 'burger', 'pizza', 'salad', 'paracetamol', 'chewables', 'apple', 'tomato', 'milk', 'egg'];
+    const hasPerishable = cartItems.some(i => perishables.some(p => i.product.name.toLowerCase().includes(p)));
+    const itemCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+
+    let vehicle = '🏍 Bike';
+    let icon = '🏍';
+    let reason = `Small order with only ${itemCount} products and delivery distance of ${distance} km. A bike provides the fastest and most cost-effective delivery.`;
+    let timeEst = '12 Minutes';
+    let fuelCost = 0;
+    let co2Saved = '100% (Zero emission electric cycle)';
+
+    if (hasPerishable) {
+      vehicle = '❄ Refrigerated Vehicle';
+      icon = '❄';
+      reason = 'This order contains temperature-sensitive perishable items. A refrigerated container ensures freshness.';
+      timeEst = `${Math.round(10 + distance * 4)} Minutes`;
+      fuelCost = Math.round(distance * 12);
+      co2Saved = '15% (Reduced emissions)';
+    } else if (itemCount >= 100) {
+      vehicle = '🚚 Lorry / Mini Truck';
+      icon = '🚚';
+      reason = `Bulk wholesale order with ${itemCount} items. Requiring heavy carriage transport over ${distance} km.`;
+      timeEst = `${Math.round(25 + distance * 5)} Minutes`;
+      fuelCost = Math.round(distance * 25);
+      co2Saved = '0% (Standard mini truck)';
+    } else if (itemCount >= 20) {
+      vehicle = '🚐 Mini Van';
+      icon = '🚐';
+      reason = `Large bulk grocery shopping with ${itemCount} items. Optimized for mini van volume capacity.`;
+      timeEst = `${Math.round(18 + distance * 4.5)} Minutes`;
+      fuelCost = Math.round(distance * 16);
+      co2Saved = '10% (Multi-stop delivery)';
+    } else if (itemCount >= 6 || distance > 8) {
+      vehicle = '🚗 Car';
+      icon = '🚗';
+      reason = `Medium size order with ${itemCount} items over ${distance} km distance. Car transit chosen for volume security.`;
+      timeEst = `${Math.round(12 + distance * 4)} Minutes`;
+      fuelCost = Math.round(distance * 10);
+      co2Saved = '30% (E-vehicle hybrid)';
+    }
+
+    const plan = {
+      vehicle,
+      icon,
+      reason,
+      deliveryTime: timeEst,
+      fuelCost,
+      distance,
+      co2Saved,
+      driverName: ['Ramesh Kumar', 'Suresh Singh', 'Arjun Dev', 'Vikram Sen'][Math.floor(Math.random() * 4)],
+      expectedPickup: '5 mins'
+    };
+
+    setLogisticsPlan(plan);
+
     const savedOrder = {
       orderId,
       shopName: shop.name,
       items: cartItems,
       grandTotal,
       deliveryTime,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      logisticsPlan: plan
     };
 
     // Save order record to localStorage
@@ -272,7 +331,7 @@ export default function CheckoutPage() {
 
     // Transition to success screen
     setConfirmedOrderId(orderId);
-    setConfirmedDeliveryTime(deliveryTime);
+    setConfirmedDeliveryTime(timeEst);
     setOrderConfirmed(true);
 
     // Clear active shopping cart
@@ -347,7 +406,7 @@ export default function CheckoutPage() {
               display: 'flex',
               flexDirection: 'column',
               gap: '0.75rem',
-              marginBottom: '3rem'
+              marginBottom: '2rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Order ID:</span>
@@ -358,6 +417,50 @@ export default function CheckoutPage() {
                 <strong style={{ color: 'var(--primary)' }}>{confirmedDeliveryTime}</strong>
               </div>
             </div>
+
+            {logisticsPlan && (
+              <div className="card" style={{
+                backgroundColor: '#ffffff',
+                border: '1.5px solid var(--primary)',
+                borderRadius: 'var(--radius-md)',
+                padding: '1.5rem',
+                textAlign: 'left',
+                marginBottom: '3rem',
+                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)'
+              }}>
+                <strong style={{ fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.75rem' }}>
+                  🚚 Smart Delivery Plan
+                </strong>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '2.5rem' }}>{logisticsPlan.icon}</span>
+                  <div>
+                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{logisticsPlan.vehicle}</h3>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Driver: <strong>{logisticsPlan.driverName}</strong></p>
+                  </div>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: '1.4' }}>
+                  {logisticsPlan.reason}
+                </p>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.75rem', fontSize: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>Distance:</span>
+                    <strong>{logisticsPlan.distance} km</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>Delivery Est:</span>
+                    <strong>{logisticsPlan.deliveryTime}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>Fuel Cost:</span>
+                    <strong>₹{logisticsPlan.fuelCost}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>CO₂ Saved:</span>
+                    <strong style={{ color: 'var(--primary)' }}>{logisticsPlan.co2Saved}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button onClick={() => router.push('/customer/home')} className="btn btn-primary" style={{ width: '100%' }}>
               Back to Home

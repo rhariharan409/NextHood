@@ -213,14 +213,14 @@ export default function CustomerHomePage() {
             }}>
               FlashFest
             </Link>
-            <Link href="/customer/favorites" style={{
-              fontWeight: pathname === '/customer/favorites' ? 600 : 500,
-              color: pathname === '/customer/favorites' ? 'var(--primary)' : 'var(--text-muted)',
+            <Link href="/customer/checkout" style={{
+              fontWeight: 500,
+              color: 'var(--text-muted)',
               cursor: 'pointer',
               textDecoration: 'none',
               transition: 'var(--transition)'
             }}>
-              Favorites
+              Cart
             </Link>
             <Link href="/customer/profile" style={{
               fontWeight: pathname === '/customer/profile' ? 600 : 500,
