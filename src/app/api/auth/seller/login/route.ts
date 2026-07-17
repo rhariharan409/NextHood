@@ -13,31 +13,38 @@ export async function POST(req: Request) {
 
     const sellers = await readCsv<SellerUser>('seller_users.csv', [
       'id',
-      'business_name',
+      'store_name',
       'owner_name',
       'email',
+      'mobile_number',
       'password_hash',
-      'created_at',
+      'business_category',
+      'gst_number',
+      'store_address',
+      'latitude',
+      'longitude',
+      'store_logo',
+      'created_at'
     ]);
 
     const lowercaseEmail = email.toLowerCase().trim();
     const user = sellers.find(u => u.email.toLowerCase().trim() === lowercaseEmail);
 
     if (!user) {
-      return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid Email or Password' }, { status: 401 });
     }
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      return NextResponse.json({ error: 'Invalid email or password.' }, { status: 401 });
+      return NextResponse.json({ error: 'Invalid Email or Password' }, { status: 401 });
     }
 
-    // Create seller session (using business_name as session name)
+    // Create seller session (using store_name as session name)
     await setSession({
       id: user.id,
       email: user.email,
       role: 'seller',
-      name: user.business_name,
+      name: user.store_name,
     });
 
     return NextResponse.json({
@@ -46,7 +53,7 @@ export async function POST(req: Request) {
         id: user.id,
         email: user.email,
         role: 'seller',
-        name: user.business_name,
+        name: user.store_name,
       },
     });
   } catch (error: any) {

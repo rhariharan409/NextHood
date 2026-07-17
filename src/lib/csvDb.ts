@@ -13,10 +13,17 @@ export interface CustomerUser {
 
 export interface SellerUser {
   id: string;
-  business_name: string;
+  store_name: string;
   owner_name: string;
   email: string;
+  mobile_number: string;
   password_hash: string;
+  business_category: string;
+  gst_number: string;
+  store_address: string;
+  latitude: string;
+  longitude: string;
+  store_logo: string;
   created_at: string;
 }
 
