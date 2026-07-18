@@ -27,6 +27,7 @@ export default function CheckoutPage() {
   const [distance, setDistance] = useState<number>(1.2); // Default 1.2km
   const [deliveryTime, setDeliveryTime] = useState<string>('10-15 mins');
   const [deliveryCharge, setDeliveryCharge] = useState<number>(30);
+  const [deliveryAddress, setDeliveryAddress] = useState('No.24 Gandhi Street, Tambaram, Chennai');
 
   // Payment Options
   const [paymentMethod, setPaymentMethod] = useState<'cod' | 'online'>('cod');
@@ -223,10 +224,14 @@ export default function CheckoutPage() {
   }, [shop, userCoords]);
 
   // Math totals
-  const subtotal = cartItems.reduce((acc, item) => acc + item.product.price * item.quantity, 0);
+  console.log('cartItems:', cartItems);
+  const subtotal = cartItems.reduce(
+    (sum, item) => sum + Number(item.product.price || 0) * Number(item.quantity || 1),
+    0
+  );
   const platformFee = 5;
   const taxes = Math.round(subtotal * 0.05); // 5% GST
-  const grandTotal = subtotal > 0 ? subtotal + deliveryCharge + platformFee + taxes : 0;
+  const grandTotal = subtotal > 0 ? subtotal + Number(deliveryCharge || 0) + platformFee + taxes : 0;
 
   // Simulate online payment verification
   const handleSimulatePayment = () => {
@@ -312,30 +317,94 @@ export default function CheckoutPage() {
 
     setLogisticsPlan(plan);
 
-    const savedOrder = {
-      orderId,
-      shopName: shop.name,
-      items: cartItems,
-      grandTotal,
-      deliveryTime,
-      created_at: new Date().toISOString(),
-      logisticsPlan: plan
+    // POST the order to the backend database
+    const placeOrderOnBackend = async () => {
+      try {
+        // Fetch the latest inventory from the database again (Requirement 7)
+        const checkRes = await fetch(`/api/places/details?id=${shop.id}`);
+        if (!checkRes.ok) {
+          alert('Failed to validate stock. Please try again.');
+          return;
+        }
+        const checkData = await checkRes.json();
+        const latestProducts = checkData.products || [];
+        
+        let inventoryFailure = false;
+        let outOfStockItemName = '';
+        
+        for (const item of cartItems) {
+          const dbProd = latestProducts.find((p: any) => p.id === item.product.id);
+          const dbStock = dbProd ? parseInt(dbProd.stock) || 0 : 0;
+          if (dbStock <= 0) {
+            removeFromCart(item.product.id);
+            outOfStockItemName = item.product.name;
+            inventoryFailure = true;
+            break;
+          }
+        }
+        
+        if (inventoryFailure) {
+          alert(`${outOfStockItemName} is currently out of stock.`);
+          return;
+        }
+
+        const orderPayload = {
+          customerId: user ? user.id : 'guest',
+          customerName: user ? user.name : 'Guest User',
+          sellerId: shop.id,
+          sellerName: shop.name,
+          storeName: shop.name,
+          items: cartItems.map(item => ({
+            id: item.product.id,
+            sellerId: shop.id,
+            sellerName: shop.name,
+            name: item.product.name,
+            price: Number(item.product.price || 0),
+            quantity: Number(item.quantity || 1),
+            image: item.product.image || '',
+            stock: (item.product as any).stock || 25
+          })),
+          subtotal: Number(subtotal),
+          deliveryCharge: Number(deliveryCharge),
+          platformFee: Number(platformFee),
+          tax: Number(taxes),
+          grandTotal: Number(grandTotal),
+          paymentMethod: paymentMethod,
+          deliveryAddress: deliveryAddress || 'No.24 Gandhi Street, Tambaram, Chennai',
+          latitude: userCoords ? userCoords.lat : shop.lat,
+          longitude: userCoords ? userCoords.lon : shop.lon,
+          createdAt: new Date().toISOString(),
+          status: 'Active'
+        };
+
+        console.log('orderPayload:', orderPayload);
+
+        const response = await fetch('/api/orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(orderPayload)
+        });
+        
+        if (response.ok) {
+          // Clear active shopping cart
+          clearCart();
+          
+          // Clear reservedItems state since reservation is now finalized as a successful order
+          setReservedItems({});
+
+          // Navigate to orders history/status page
+          router.push('/orders?success=true');
+        } else {
+          const errData = await response.json();
+          alert(errData.error || 'Failed to place order.');
+        }
+      } catch (err) {
+        console.error('Error placing order:', err);
+        alert('An error occurred while placing your order. Please try again.');
+      }
     };
-
-    // Save order record to localStorage
-    const previousOrders = JSON.parse(localStorage.getItem('nexthood_orders') || '[]');
-    localStorage.setItem('nexthood_orders', JSON.stringify([...previousOrders, savedOrder]));
-
-    // Clear reservedItems state since reservation is now finalized as a successful order
-    setReservedItems({});
-
-    // Transition to success screen
-    setConfirmedOrderId(orderId);
-    setConfirmedDeliveryTime(timeEst);
-    setOrderConfirmed(true);
-
-    // Clear active shopping cart
-    clearCart();
+    
+    placeOrderOnBackend();
   };
 
   const handleBackLink = async () => {
@@ -574,9 +643,26 @@ export default function CheckoutPage() {
 
                     <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Address Details</span>
-                      <p style={{ fontSize: '0.95rem', color: 'var(--foreground)' }}>
+                      <p style={{ fontSize: '0.95rem', color: 'var(--foreground)', marginBottom: '0.5rem' }}>
                         GPS Located Neighborhood, Latitude: {userCoords?.lat.toFixed(5) || 'Searching...'}, Longitude: {userCoords?.lon.toFixed(5) || 'Searching...'}
                       </p>
+                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Complete Delivery Address</label>
+                      <textarea
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        style={{
+                          width: '100%',
+                          padding: '0.75rem',
+                          border: '1px solid var(--border)',
+                          borderRadius: 'var(--radius-sm)',
+                          fontFamily: 'inherit',
+                          fontSize: '0.9rem',
+                          resize: 'vertical'
+                        }}
+                        placeholder="Enter complete delivery address"
+                        rows={3}
+                        required
+                      />
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

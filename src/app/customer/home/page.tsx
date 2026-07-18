@@ -33,6 +33,8 @@ export default function CustomerHomePage() {
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [selectedBusiness, setSelectedBusiness] = useState<Business | null>(null);
+  const [selectedBusinessProducts, setSelectedBusinessProducts] = useState<any[]>([]);
+  const [selectedBusinessDetails, setSelectedBusinessDetails] = useState<any | null>(null);
 
   const searchExamples = [
     'Restaurant',
@@ -102,6 +104,34 @@ export default function CustomerHomePage() {
       handleSearch(true);
     }
   }, [coords]);
+
+  useEffect(() => {
+    const currentBiz = selectedBusiness;
+    if (!currentBiz) {
+      setSelectedBusinessProducts([]);
+      setSelectedBusinessDetails(null);
+      return;
+    }
+    
+    async function loadDetails() {
+      if (!currentBiz) return;
+      try {
+        const res = await fetch(`/api/places/details?id=${currentBiz.id}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.business) {
+            setSelectedBusinessDetails(data.business);
+          }
+          if (data.products) {
+            setSelectedBusinessProducts(data.products);
+          }
+        }
+      } catch (err) {
+        console.error('Error loading selected business details:', err);
+      }
+    }
+    loadDetails();
+  }, [selectedBusiness]);
 
   const handleSearch = async (initial = false, customQuery?: string) => {
     if (!coords) {
@@ -354,7 +384,7 @@ export default function CustomerHomePage() {
                   marginBottom: '1rem'
                 }}>
                   <h3 style={{ fontSize: '0.9rem', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)' }}>
-                    {searching ? 'Searching OSM...' : `Nearby Businesses (${businesses.length})`}
+                    {searching ? 'Searching Places...' : `Nearby Businesses (${businesses.length})`}
                   </h3>
                   {coords && (
                     <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 500 }}>
@@ -397,9 +427,21 @@ export default function CustomerHomePage() {
                           {(biz.distance / 1000).toFixed(1)} km
                         </span>
                       </div>
-                      <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-                        {biz.category}
-                      </p>
+                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                          {biz.category}
+                        </p>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          color: '#ffffff',
+                          backgroundColor: 'var(--primary)',
+                          padding: '0.05rem 0.35rem',
+                          borderRadius: 'var(--radius-full)'
+                        }}>
+                          Real Data
+                        </span>
+                      </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
                         <span style={{ color: '#eab308' }}>★</span>
                         <span style={{ fontWeight: 600 }}>{biz.rating}</span>
@@ -460,81 +502,126 @@ export default function CustomerHomePage() {
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
                 border: '1.5px solid var(--border)',
                 display: 'flex',
-                gap: '1.25rem'
+                flexDirection: 'column',
+                gap: '1rem'
               }}>
-                {selectedBusiness.photoUrl && (
-                  <img
-                    src={selectedBusiness.photoUrl}
-                    alt={selectedBusiness.name}
-                    style={{
-                      width: '100px',
-                      height: '100px',
-                      borderRadius: 'var(--radius-md)',
-                      objectFit: 'cover',
-                      flexShrink: 0
-                    }}
-                  />
-                )}
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
-                      <h3 style={{
-                        fontFamily: 'var(--font-display)',
-                        fontWeight: 700,
-                        fontSize: '1.1rem',
-                        lineHeight: '1.3',
-                        color: 'var(--foreground)',
-                        marginBottom: '0.25rem'
-                      }}>
-                        {selectedBusiness.name}
-                      </h3>
-                      <button
-                        onClick={() => setSelectedBusiness(null)}
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: 'var(--text-muted)',
-                          cursor: 'pointer',
-                          fontWeight: 500,
-                          fontSize: '1rem',
-                          padding: '0 0 4px 4px'
-                        }}
-                      >
-                        ✕
-                      </button>
-                    </div>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
-                      {selectedBusiness.category}
-                    </p>
-                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', lineHeight: '1.4' }}>
-                      {selectedBusiness.address}
-                    </p>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem' }}>
-                        <span style={{ color: '#eab308' }}>★</span>
-                        <span style={{ fontWeight: 600 }}>{selectedBusiness.rating}</span>
+                <div style={{ display: 'flex', gap: '1.25rem' }}>
+                  {selectedBusiness.photoUrl && (
+                    <img
+                      src={selectedBusiness.photoUrl}
+                      alt={selectedBusiness.name}
+                      style={{
+                        width: '90px',
+                        height: '90px',
+                        borderRadius: 'var(--radius-md)',
+                        objectFit: 'cover',
+                        flexShrink: 0
+                      }}
+                    />
+                  )}
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                        <h3 style={{
+                          fontFamily: 'var(--font-display)',
+                          fontWeight: 700,
+                          fontSize: '1.15rem',
+                          lineHeight: '1.3',
+                          color: 'var(--foreground)',
+                          marginBottom: '0.25rem'
+                        }}>
+                          🏪 {selectedBusinessDetails?.name || selectedBusiness.name}
+                        </h3>
+                        <button
+                          onClick={() => setSelectedBusiness(null)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: 'var(--text-muted)',
+                            cursor: 'pointer',
+                            fontWeight: 500,
+                            fontSize: '1rem',
+                            padding: '0 0 4px 4px'
+                          }}
+                        >
+                          ✕
+                        </button>
                       </div>
-                      <span style={{
-                        fontSize: '0.75rem',
-                        color: selectedBusiness.isOpen ? 'var(--primary)' : '#ef4444',
-                        fontWeight: 600
-                      }}>
-                        {selectedBusiness.isOpen ? '● Open Now' : '● Closed'}
-                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>
+                          🏷 {selectedBusinessDetails?.category || selectedBusiness.category}
+                        </p>
+                        <span style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          color: '#ffffff',
+                          backgroundColor: (selectedBusinessDetails?.isRegistered || selectedBusiness.isRegistered) ? '#10b981' : 'var(--primary)',
+                          padding: '0.05rem 0.35rem',
+                          borderRadius: 'var(--radius-full)'
+                        }}>
+                          {(selectedBusinessDetails?.isRegistered || selectedBusiness.isRegistered) ? '🏪 Registered Partner' : 'Demo Shop'}
+                        </span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.8rem', color: 'var(--foreground)', marginBottom: '0.75rem' }}>
+                        <span>👤 <strong>Owner:</strong> {selectedBusinessDetails?.ownerName || 'Not Provided'}</span>
+                        <span>📍 <strong>Address:</strong> {selectedBusinessDetails?.address || selectedBusiness.address || 'Not Available'}</span>
+                        {selectedBusinessDetails?.phone && <span>📞 <strong>Phone:</strong> {selectedBusinessDetails.phone}</span>}
+                        {selectedBusinessDetails?.email && <span>📧 <strong>Email:</strong> {selectedBusinessDetails.email}</span>}
+                        <span>🕒 <strong>Hours:</strong> {selectedBusinessDetails?.openingHours || (selectedBusiness as any).openingHours || 'Not Available'}</span>
+                        <span>🛒 <strong>Products:</strong> {selectedBusinessProducts.length || (selectedBusiness as any).productsCount || 0} Available</span>
+                      </div>
                     </div>
-                    
-                    <Link
-                      href={`/customer/shop/${selectedBusiness.id}`}
-                      className="btn btn-primary"
-                      style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
-                    >
-                      View Shop
-                    </Link>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem' }}>
+                          <span style={{ color: '#eab308' }}>★</span>
+                          <span style={{ fontWeight: 600 }}>{selectedBusinessDetails?.rating || selectedBusiness.rating || 'New Store'}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>({selectedBusinessDetails?.reviewsCount || selectedBusiness.reviewsCount || 0} reviews)</span>
+                        </div>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          color: (selectedBusinessDetails?.isOpen ?? selectedBusiness.isOpen) ? '#10b981' : '#ef4444',
+                          fontWeight: 600
+                        }}>
+                          {(selectedBusinessDetails?.isOpen ?? selectedBusiness.isOpen) ? '🟢 Open Now' : '🔴 Closed'}
+                        </span>
+                      </div>
+                      
+                      <Link
+                        href={`/customer/shop/${selectedBusinessDetails?.sellerId || selectedBusiness.id}`}
+                        className="btn btn-primary"
+                        style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
+                      >
+                        View Shop
+                      </Link>
+                    </div>
                   </div>
                 </div>
+
+                {/* Available Products and Live Inventory section */}
+                {selectedBusinessProducts.length > 0 && (
+                  <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem' }}>
+                    <h5 style={{ fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                      Live Products & Inventory ({selectedBusinessProducts.length})
+                    </h5>
+                    <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.25rem' }} className="no-scrollbar">
+                      {selectedBusinessProducts.slice(0, 4).map((p) => {
+                        const stock = parseInt(p.stock || p.available_stock || '0');
+                        return (
+                          <div key={p.id} style={{ flexShrink: 0, padding: '0.4rem 0.6rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '0.75rem', minWidth: '100px' }}>
+                            <span style={{ fontWeight: 600, display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '100px' }} title={p.name}>{p.name}</span>
+                            <span style={{ color: '#10b981', fontWeight: 'bold' }}>₹{p.price}</span>
+                            <span style={{ color: stock === 0 ? '#ef4444' : '#64748b', display: 'block', fontSize: '0.65rem', marginTop: '0.1rem' }}>
+                              {stock === 0 ? 'Out of stock' : `${stock} left`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )}

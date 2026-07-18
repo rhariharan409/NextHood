@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useCart, Product, ShopDetails } from '@/context/CartContext';
+import OptimizedImage from '@/components/OptimizedImage';
 
 // Mock inventory generation based on category
 function getMockProducts(category: string, shopId: string): Product[] {
@@ -18,31 +19,189 @@ function getMockProducts(category: string, shopId: string): Product[] {
         price: 450,
         description: 'Rich dark chocolate cake layered with decadent fudge frosting.',
         image: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=400&auto=format&fit=crop&q=60',
-        category: 'Cakes'
+        category: 'Cakes',
+        discount: '10% OFF',
+        deliveryTime: 'Delivery 25 mins',
+        rating: 4.8,
+        isBestSeller: true
       },
       {
         id: `${shopId}-p2`,
-        name: 'Fresh Blueberry Muffin',
-        price: 90,
-        description: 'Soft, buttery muffin loaded with fresh juicy blueberries.',
-        image: 'https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=400&auto=format&fit=crop&q=60',
-        category: 'Pastries'
+        name: 'Fresh Bread Loaf',
+        price: 60,
+        description: 'Freshly baked classic soft white bread loaf.',
+        image: 'https://images.unsplash.com/photo-1509440159596-0249088772ff?w=400&auto=format&fit=crop&q=60',
+        category: 'Bread',
+        discount: '5% OFF',
+        deliveryTime: 'Delivery 15 mins',
+        rating: 4.3,
+        isBestSeller: false
       },
       {
         id: `${shopId}-p3`,
-        name: 'Artisanal Sourdough Bread',
+        name: 'Chocolate Chip Cookies',
         price: 120,
-        description: 'Freshly baked rustic sourdough bread with a crispy crust.',
-        image: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=400&auto=format&fit=crop&q=60',
-        category: 'Bread'
+        description: 'Crispy on the outside, chewy on the inside cookies.',
+        image: 'https://images.unsplash.com/photo-1499636136210-6f4ee9127357?w=400&auto=format&fit=crop&q=60',
+        category: 'Cookies',
+        discount: '12% OFF',
+        deliveryTime: 'Delivery 12 mins',
+        rating: 4.5,
+        isBestSeller: true
       },
       {
         id: `${shopId}-p4`,
-        name: 'Buttery French Croissant',
+        name: 'Glazed Donuts (Pack of 4)',
         price: 80,
-        description: 'Flaky, golden-brown laminated pastry made with pure butter.',
-        image: 'https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&auto=format&fit=crop&q=60',
-        category: 'Pastries'
+        description: 'Classic glazed sweet ring donuts.',
+        image: 'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=400&auto=format&fit=crop&q=60',
+        category: 'Pastries',
+        discount: '15% OFF',
+        deliveryTime: 'Delivery 18 mins',
+        rating: 4.4,
+        isBestSeller: false
+      },
+      {
+        id: `${shopId}-p5`,
+        name: 'Vanilla Cupcakes',
+        price: 90,
+        description: 'Fluffy vanilla cupcakes topped with buttercream frosting.',
+        image: 'https://images.unsplash.com/photo-1587314168485-3236d6710814?w=400&auto=format&fit=crop&q=60',
+        category: 'Cakes',
+        discount: '8% OFF',
+        deliveryTime: 'Delivery 20 mins',
+        rating: 4.6,
+        isBestSeller: false
+      }
+    ];
+  }
+
+  if (cat.includes('pharmacy') || cat.includes('medicine') || cat.includes('chemist') || cat.includes('health') || cat.includes('medical')) {
+    return [
+      {
+        id: `${shopId}-p1`,
+        name: 'Paracetamol 650mg (15 Tablets)',
+        price: 30,
+        description: 'Fast relief from pain and fever.',
+        image: 'https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=400&auto=format&fit=crop&q=60',
+        category: 'OTC Medicines',
+        discount: '5% OFF',
+        deliveryTime: 'Delivery 10 mins',
+        rating: 4.7,
+        isBestSeller: true
+      },
+      {
+        id: `${shopId}-p2`,
+        name: 'Vitamin C + Zinc Tablets',
+        price: 180,
+        description: 'Daily immunity boosting tablets.',
+        image: 'https://images.unsplash.com/photo-1616679911721-eff6eec18fcd?w=400&auto=format&fit=crop&q=60',
+        category: 'Vitamins',
+        discount: '10% OFF',
+        deliveryTime: 'Delivery 15 mins',
+        rating: 4.5,
+        isBestSeller: false
+      },
+      {
+        id: `${shopId}-p3`,
+        name: 'Complete First Aid Kit',
+        price: 350,
+        description: 'Essential bandages, antiseptics, and tools.',
+        image: 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400&auto=format&fit=crop&q=60',
+        category: 'First Aid',
+        discount: '15% OFF',
+        deliveryTime: 'Delivery 12 mins',
+        rating: 4.8,
+        isBestSeller: true
+      },
+      {
+        id: `${shopId}-p4`,
+        name: 'Instant Hand Sanitizer (250ml)',
+        price: 80,
+        description: 'Kills 99.9% of germs instantly.',
+        image: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=400&auto=format&fit=crop&q=60',
+        category: 'Sanitizers',
+        discount: '20% OFF',
+        deliveryTime: 'Delivery 8 mins',
+        rating: 4.4,
+        isBestSeller: false
+      },
+      {
+        id: `${shopId}-p5`,
+        name: 'N95 Protective Masks (Pack of 5)',
+        price: 50,
+        description: '5-layer filtration high protection face masks.',
+        image: 'https://images.unsplash.com/photo-1586942593568-29361efcd571?w=400&auto=format&fit=crop&q=60',
+        category: 'Masks',
+        discount: '25% OFF',
+        deliveryTime: 'Delivery 9 mins',
+        rating: 4.6,
+        isBestSeller: false
+      }
+    ];
+  }
+
+  if (cat.includes('electronic') || cat.includes('mobile') || cat.includes('tech') || cat.includes('computer') || cat.includes('phone')) {
+    return [
+      {
+        id: `${shopId}-p1`,
+        name: 'Wireless Bluetooth Headphones',
+        price: 1800,
+        description: 'Immersive sound with active noise cancellation.',
+        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=60',
+        category: 'Audio',
+        discount: '25% OFF',
+        deliveryTime: 'Delivery 20 mins',
+        rating: 4.6,
+        isBestSeller: true
+      },
+      {
+        id: `${shopId}-p2`,
+        name: 'Mechanical Gaming Keyboard',
+        price: 790,
+        description: 'Tactile mechanical switches with RGB backlit keys.',
+        image: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&auto=format&fit=crop&q=60',
+        category: 'Accessories',
+        discount: '15% OFF',
+        deliveryTime: 'Delivery 25 mins',
+        rating: 4.3,
+        isBestSeller: false
+      },
+      {
+        id: `${shopId}-p3`,
+        name: 'Ergonomic Wireless Mouse',
+        price: 450,
+        description: 'Precision optical mouse with comfortable grip.',
+        image: 'https://images.unsplash.com/photo-1615663245857-ac93bb7c39e7?w=400&auto=format&fit=crop&q=60',
+        category: 'Accessories',
+        discount: '10% OFF',
+        deliveryTime: 'Delivery 18 mins',
+        rating: 4.4,
+        isBestSeller: false
+      },
+      {
+        id: `${shopId}-p4`,
+        name: 'Fast Charging Power Bank 10000mAh',
+        price: 1200,
+        description: 'Ultra-compact power bank with 22.5W fast output charging.',
+        image: 'https://images.unsplash.com/photo-1609592424109-dd55de17fb4d?w=400&auto=format&fit=crop&q=60',
+        category: 'Power Banks',
+        discount: '20% OFF',
+        deliveryTime: 'Delivery 15 mins',
+        rating: 4.5,
+        isBestSeller: true
+      },
+      {
+        id: `${shopId}-p5`,
+        name: 'USB-C Braided Cable (2m)',
+        price: 250,
+        description: 'Extremely durable fast-charging braided USB-C cable.',
+        image: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400&auto=format&fit=crop&q=60',
+        category: 'Accessories',
+        discount: '30% OFF',
+        deliveryTime: 'Delivery 12 mins',
+        rating: 4.2,
+        isBestSeller: false
       }
     ];
   }
@@ -51,151 +210,140 @@ function getMockProducts(category: string, shopId: string): Product[] {
     return [
       {
         id: `${shopId}-p1`,
-        name: 'Nexthood Special Burger',
+        name: 'Special Veg Burger',
         price: 180,
-        description: 'Juicy patty, fresh lettuce, cheddar cheese, and house sauce on a brioche bun.',
+        description: 'Crispy veg patty, fresh lettuce, cheddar cheese, and house sauce.',
         image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&auto=format&fit=crop&q=60',
-        category: 'Mains'
+        category: 'Burgers',
+        discount: '10% OFF',
+        deliveryTime: 'Delivery 20 mins',
+        rating: 4.5,
+        isBestSeller: true
       },
       {
         id: `${shopId}-p2`,
         name: 'Margherita Pizza (10")',
         price: 260,
-        description: 'Classic sourdough pizza base with San Marzano tomatoes, fresh mozzarella, and basil.',
+        description: 'Classic sourdough pizza base with San Marzano tomatoes and mozzarella.',
         image: 'https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?w=400&auto=format&fit=crop&q=60',
-        category: 'Mains'
+        category: 'Pizzas',
+        discount: '15% OFF',
+        deliveryTime: 'Delivery 25 mins',
+        rating: 4.7,
+        isBestSeller: true
       },
       {
         id: `${shopId}-p3`,
-        name: 'Premium Espresso Macchiato',
+        name: 'Espresso Macchiato',
         price: 110,
-        description: 'Strong double shot of espresso marked with a dollop of velvety milk foam.',
+        description: 'Strong double shot of espresso marked with velvety milk foam.',
         image: 'https://images.unsplash.com/photo-1485808191679-5f86510681a2?w=400&auto=format&fit=crop&q=60',
-        category: 'Beverages'
+        category: 'Beverages',
+        discount: '5% OFF',
+        deliveryTime: 'Delivery 12 mins',
+        rating: 4.4,
+        isBestSeller: false
       },
       {
         id: `${shopId}-p4`,
         name: 'Healthy Caesar Salad',
         price: 150,
-        description: 'Crisp romaine lettuce, croutons, parmesan cheese, and creamy Caesar dressing.',
+        description: 'Crisp romaine lettuce, croutons, parmesan cheese, and caesar dressing.',
         image: 'https://images.unsplash.com/photo-1550304943-4f24f54ddde9?w=400&auto=format&fit=crop&q=60',
-        category: 'Sides'
+        category: 'Salads',
+        discount: '8% OFF',
+        deliveryTime: 'Delivery 18 mins',
+        rating: 4.3,
+        isBestSeller: false
       }
     ];
   }
 
-  if (cat.includes('pharmacy') || cat.includes('medicine') || cat.includes('chemist')) {
-    return [
-      {
-        id: `${shopId}-p1`,
-        name: 'Paracetamol 650mg (15 Tablets)',
-        price: 30,
-        description: 'Fast relief from pain and fever.',
-        image: 'https://images.unsplash.com/photo-1584017911766-d451b3d0e843?w=400&auto=format&fit=crop&q=60',
-        category: 'OTC Medicines'
-      },
-      {
-        id: `${shopId}-p2`,
-        name: 'Premium Vitamin C + Zinc Chewables',
-        price: 180,
-        description: 'Immunity booster dietary supplement, orange flavor (60 tablets).',
-        image: 'https://images.unsplash.com/photo-1616679911721-eff6eec18fcd?w=400&auto=format&fit=crop&q=60',
-        category: 'Vitamins & Supplements'
-      },
-      {
-        id: `${shopId}-p3`,
-        name: 'Waterproof Band-Aid Strips (20 Pack)',
-        price: 60,
-        description: 'Flexible sterile adhesive bandages for wound care.',
-        image: 'https://images.unsplash.com/photo-1603398938378-e54eab446dde?w=400&auto=format&fit=crop&q=60',
-        category: 'First Aid'
-      }
-    ];
-  }
-
-  if (cat.includes('grocery') || cat.includes('supermarket') || cat.includes('convenience') || cat.includes('store') || cat.includes('vegetable')) {
-    return [
-      {
-        id: `${shopId}-p1`,
-        name: 'Fresh Organic Apples (1kg)',
-        price: 160,
-        description: 'Sweet, crisp, freshly picked red delicious organic apples.',
-        image: 'https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?w=400&auto=format&fit=crop&q=60',
-        category: 'Fruits & Vegetables'
-      },
-      {
-        id: `${shopId}-p2`,
-        name: 'Fresh Local Farm Tomatoes (1kg)',
-        price: 60,
-        description: 'Ripe and juicy red tomatoes sourced from nearby farms.',
-        image: 'https://images.unsplash.com/photo-1595855759920-86582396756a?w=400&auto=format&fit=crop&q=60',
-        category: 'Fruits & Vegetables'
-      },
-      {
-        id: `${shopId}-p3`,
-        name: 'Full Cream Milk (1L)',
-        price: 74,
-        description: 'Pasteurized, homogenized premium fresh milk.',
-        image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&auto=format&fit=crop&q=60',
-        category: 'Dairy & Eggs'
-      },
-      {
-        id: `${shopId}-p4`,
-        name: 'Farm Fresh Brown Eggs (Pack of 12)',
-        price: 90,
-        description: 'Naturally raised, protein-rich brown eggs.',
-        image: 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=400&auto=format&fit=crop&q=60',
-        category: 'Dairy & Eggs'
-      }
-    ];
-  }
-
-  if (cat.includes('electronic') || cat.includes('mobile') || cat.includes('tech')) {
-    return [
-      {
-        id: `${shopId}-p1`,
-        name: 'Premium Wireless Over-Ear Headphones',
-        price: 1800,
-        description: 'Active noise cancellation, 40 hours battery life, hi-fi sound.',
-        image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=400&auto=format&fit=crop&q=60',
-        category: 'Audio'
-      },
-      {
-        id: `${shopId}-p2`,
-        name: 'Fast Charging USB-C Braided Cable (2m)',
-        price: 290,
-        description: 'Heavy duty braided nylon cable supporting up to 60W power delivery.',
-        image: 'https://images.unsplash.com/photo-1611186871348-b1ce696e52c9?w=400&auto=format&fit=crop&q=60',
-        category: 'Accessories'
-      },
-      {
-        id: `${shopId}-p3`,
-        name: 'Compact 10000mAh Power Bank',
-        price: 990,
-        description: 'Dual port 22.5W fast output charging power bank.',
-        image: 'https://images.unsplash.com/photo-1609592424109-dd55de17fb4d?w=400&auto=format&fit=crop&q=60',
-        category: 'Accessories'
-      }
-    ];
-  }
-
-  // Fallback: general retail
+  // Fallback / Grocery Store
   return [
     {
       id: `${shopId}-p1`,
-      name: 'Nexthood Everyday Water Bottle',
-      price: 150,
-      description: 'BPA-free durable plastic water bottle with carry strap.',
-      image: 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=400&auto=format&fit=crop&q=60',
-      category: 'Daily Needs'
+      name: 'Fresh Organic Milk (1L)',
+      price: 58,
+      description: 'Pasteurized, homogenized premium fresh milk.',
+      image: 'https://images.unsplash.com/photo-1563636619-e9143da7973b?w=400&auto=format&fit=crop&q=60',
+      category: 'Dairy',
+      discount: '10% OFF',
+      deliveryTime: 'Delivery 12 mins',
+      rating: 4.2,
+      isBestSeller: true
     },
     {
       id: `${shopId}-p2`,
-      name: 'Organic Honey Oats Granola (400g)',
-      price: 240,
-      description: 'Crunchy rolled oats clusters baked with real honey and almonds.',
-      image: 'https://images.unsplash.com/photo-1517881917430-e70dfb3610aa?w=400&auto=format&fit=crop&q=60',
-      category: 'Snacks'
+      name: 'Basmati Rice (1kg)',
+      price: 75,
+      description: 'Long grain, aromatic premium aged Basmati rice.',
+      image: 'https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&auto=format&fit=crop&q=60',
+      category: 'Grains',
+      discount: '5% OFF',
+      deliveryTime: 'Delivery 15 mins',
+      rating: 4.5,
+      isBestSeller: false
+    },
+    {
+      id: `${shopId}-p3`,
+      name: 'Fresh Eggs (Pack of 12)',
+      price: 80,
+      description: 'Naturally raised, protein-rich brown eggs.',
+      image: 'https://images.unsplash.com/photo-1516448620398-c5f44bf9f441?w=400&auto=format&fit=crop&q=60',
+      category: 'Eggs & Poultry',
+      discount: '15% OFF',
+      deliveryTime: 'Delivery 10 mins',
+      rating: 4.6,
+      isBestSeller: true
+    },
+    {
+      id: `${shopId}-p4`,
+      name: 'Whole Wheat Bread',
+      price: 40,
+      description: 'Freshly baked high-fiber whole wheat bread.',
+      image: 'https://images.unsplash.com/photo-1549931319-a545dcf3bc73?w=400&auto=format&fit=crop&q=60',
+      category: 'Bread',
+      discount: '12% OFF',
+      deliveryTime: 'Delivery 8 mins',
+      rating: 4.1,
+      isBestSeller: false
+    },
+    {
+      id: `${shopId}-p5`,
+      name: 'Fresh Farm Vegetables (Assorted 1kg)',
+      price: 60,
+      description: 'Seasonal selection of crisp vegetables.',
+      image: 'https://images.unsplash.com/photo-1595855759920-86582396756a?w=400&auto=format&fit=crop&q=60',
+      category: 'Produce',
+      discount: '20% OFF',
+      deliveryTime: 'Delivery 14 mins',
+      rating: 4.4,
+      isBestSeller: false
+    },
+    {
+      id: `${shopId}-p6`,
+      name: 'Refined Cooking Oil (1L)',
+      price: 150,
+      description: 'Premium light refined sunflower oil.',
+      image: 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=400&auto=format&fit=crop&q=60',
+      category: 'Pantry',
+      discount: '8% OFF',
+      deliveryTime: 'Delivery 18 mins',
+      rating: 4.3,
+      isBestSeller: false
+    },
+    {
+      id: `${shopId}-p7`,
+      name: 'Pure White Sugar (1kg)',
+      price: 45,
+      description: 'Finely granulated organic white cane sugar.',
+      image: 'https://images.unsplash.com/photo-1581781870027-04212e231e96?w=400&auto=format&fit=crop&q=60',
+      category: 'Pantry',
+      discount: '5% OFF',
+      deliveryTime: 'Delivery 16 mins',
+      rating: 4.0,
+      isBestSeller: false
     }
   ];
 }
@@ -224,6 +372,9 @@ export default function ShopInventoryPage() {
   // Stress Test State
   const [stressTesting, setStressTesting] = useState(false);
   const [stressTestResult, setStressTestResult] = useState<any>(null);
+  
+  // Similar shops state
+  const [similarShops, setSimilarShops] = useState<any[]>([]);
 
   // Helper to trigger pulse highlight
   const triggerPulse = (productId: string) => {
@@ -252,49 +403,109 @@ export default function ShopInventoryPage() {
   useEffect(() => {
     async function fetchShopDetails() {
       try {
-        const query = `
-          [out:json][timeout:15];
-          (
-            node(${shopId});
-            way(${shopId});
-          );
-          out center;
-        `;
-        const res = await fetch(`https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`);
+        const res = await fetch(`/api/places/details?id=${shopId}`);
         let name = 'Local Store';
-        let category = 'Grocery & Shops';
+        let category = 'Grocery Store';
         let lat = 0;
         let lon = 0;
+        let address = '';
+        let rating = 4.2;
+        let reviewsCount = 25;
+        let isOpen = true;
+        let photoUrl = undefined;
+        let isRegistered = false;
+        let productsData: any[] = [];
+        let data: any = null;
 
         if (res.ok) {
-          const data = await res.json();
-          if (data.elements && data.elements.length > 0) {
-            const el = data.elements[0];
-            const tags = el.tags || {};
-            name = tags.name || tags.brand || 'Local Business';
-            lat = el.lat || (el.center && el.center.lat) || 0;
-            lon = el.lon || (el.center && el.center.lon) || 0;
-
-            if (tags.shop) {
-              category = tags.shop.replace(/_/g, ' ');
-              category = category.charAt(0).toUpperCase() + category.slice(1);
-            } else if (tags.amenity) {
-              category = tags.amenity.replace(/_/g, ' ');
-              category = category.charAt(0).toUpperCase() + category.slice(1);
-            }
+          data = await res.json();
+          if (data.business) {
+            const b = data.business;
+            name = b.name;
+            category = b.category;
+            lat = b.lat;
+            lon = b.lon;
+            address = b.address;
+            rating = b.rating;
+            reviewsCount = b.reviewsCount;
+            isOpen = b.isOpen;
+            photoUrl = b.photoUrl;
+            isRegistered = !!b.isRegistered;
+          }
+          if (data.products && data.products.length > 0) {
+            productsData = data.products.map((p: any) => ({
+              id: p.id,
+              name: p.name,
+              price: parseFloat(p.price || '0'),
+              description: p.description,
+              image: p.images.split(',')[0],
+              category: p.category,
+              discount: p.discount,
+              deliveryTime: p.delivery_type === 'Express' ? 'Delivery 12 mins' : 'Delivery 25 mins',
+              rating: parseFloat(p.rating || '0') || 4.5,
+              isBestSeller: p.tags?.includes('Best Seller') || p.tags?.includes('best'),
+              brand: p.brand || 'Local Brand',
+              unit: p.weight || 'unit',
+              stock: parseInt(p.stock) || 0
+            }));
           }
         }
 
-        const shopDetails: ShopDetails = {
+        const shopDetails = {
           id: shopId,
           name,
           category,
           lat,
-          lon
+          lon,
+          address,
+          rating,
+          reviewsCount,
+          isOpen,
+          photoUrl,
+          isRegistered,
+          ownerName: data?.business?.ownerName || 'Not Provided',
+          email: data?.business?.email || 'Not Provided',
+          phone: data?.business?.phone || 'Not Provided',
+          description: data?.business?.description || 'Not Provided',
+          openingHours: data?.business?.openingHours || 'Not Available',
+          registeredSince: data?.business?.registeredSince || 'Not Available'
         };
 
-        setShop(shopDetails);
-        setProducts(getMockProducts(category, shopId));
+        setShop(shopDetails as any);
+        
+        if (isRegistered && productsData.length > 0) {
+          setProducts(productsData);
+          // Set live stocks state from the product data stock field
+          const newStocks: Record<string, number> = {};
+          productsData.forEach((p: any) => {
+            // Find the original raw product to get raw stock
+            const raw = data.products.find((rp: any) => rp.id === p.id);
+            newStocks[p.id] = raw ? parseInt(raw.stock) || 0 : 25;
+          });
+          setStocks(newStocks);
+        } else {
+          setProducts(getMockProducts(category, shopId));
+        }
+
+        // Fetch similar shops of same category
+        try {
+          const placesRes = await fetch(`/api/places`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              lat: lat || 12.9229,
+              lon: lon || 80.1275,
+              query: category
+            })
+          });
+          if (placesRes.ok) {
+            const placesData = await placesRes.json();
+            const filtered = (placesData.results || []).filter((s: any) => s.id !== shopId).slice(0, 4);
+            setSimilarShops(filtered);
+          }
+        } catch (e) {
+          console.error('Error loading similar shops:', e);
+        }
       } catch (err) {
         console.error('Error fetching shop details:', err);
         setShop({
@@ -302,8 +513,9 @@ export default function ShopInventoryPage() {
           name: 'Nexthood Local Merchant',
           category: 'Grocery Store',
           lat: 12.9716,
-          lon: 77.5946
-        });
+          lon: 77.5946,
+          isRegistered: false
+        } as any);
         setProducts(getMockProducts('grocery', shopId));
       } finally {
         setLoading(false);
@@ -312,37 +524,26 @@ export default function ShopInventoryPage() {
 
     if (shopId) {
       fetchShopDetails();
+      const interval = setInterval(fetchShopDetails, 3000);
+      return () => clearInterval(interval);
     }
   }, [shopId]);
 
-  // 2. Fetch/Initialize DB Inventory Stock Levels
+  // 2. Fetch/Initialize DB Inventory Stock Levels directly from seller products database
   const reloadStockLevels = async () => {
     if (!shop) return;
     try {
-      const res = await fetch(`/api/inventory?shopId=${shop.id}`);
-      const data = await res.json();
-      
-      const updatedStocks: Record<string, number> = {};
-      for (const prod of products) {
-        const invItem = data.inventory?.find((item: any) => item.product_id === prod.id);
-        if (invItem) {
-          updatedStocks[prod.id] = parseInt(invItem.stock_quantity) || 0;
-        } else {
-          const stock = 15 + Math.floor(Math.random() * 15);
-          await fetch('/api/inventory', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              shopId: shop.id,
-              productId: prod.id,
-              action: 'restock',
-              quantity: stock
-            })
+      const res = await fetch(`/api/places/details?id=${shop.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.products) {
+          const updatedStocks: Record<string, number> = {};
+          data.products.forEach((p: any) => {
+            updatedStocks[p.id] = parseInt(p.stock) || 0;
           });
-          updatedStocks[prod.id] = stock;
+          setStocks(updatedStocks);
         }
       }
-      setStocks(updatedStocks);
     } catch (err) {
       console.error('Error reloading inventory levels:', err);
     }
@@ -353,6 +554,15 @@ export default function ShopInventoryPage() {
       reloadStockLevels();
     }
   }, [shop, products]);
+
+  // Poll for latest shop inventory details and stock levels from database every 3 seconds
+  useEffect(() => {
+    if (!shopId) return;
+    const interval = setInterval(() => {
+      reloadStockLevels();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [shopId, shop]);
 
   // 3. Connect to Standalone WebSocket Server
   useEffect(() => {
@@ -591,7 +801,36 @@ export default function ShopInventoryPage() {
     );
   }
 
-  if (!shop) return null;
+  if (!shop) {
+    return (
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'var(--font-family)',
+        color: '#64748b',
+        backgroundColor: '#f8fafc'
+      }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', color: '#1e293b', marginBottom: '0.5rem' }}>Unable to load shop details.</h2>
+        <p style={{ fontSize: '0.9rem', marginBottom: '1.5rem' }}>The requested store could not be found or is not registered.</p>
+        <Link href="/customer/home" style={{
+          color: '#ffffff',
+          backgroundColor: 'var(--primary)',
+          padding: '0.65rem 1.25rem',
+          borderRadius: '6px',
+          textDecoration: 'none',
+          fontWeight: 600,
+          fontSize: '0.9rem'
+        }}>
+          ← Return to map search
+        </Link>
+      </div>
+    );
+  }
+
+  const s = shop as any;
 
   return (
     <>
@@ -647,49 +886,103 @@ export default function ShopInventoryPage() {
                 </button>
               </div>
             </div>
-
             <div className="card" style={{
               backgroundColor: '#ffffff',
               padding: '2.5rem',
               border: '1px solid var(--border)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '1.5rem'
+              display: 'grid',
+              gridTemplateColumns: '1fr 300px',
+              gap: '2.5rem',
+              borderRadius: '12px'
             }}>
               <div>
-                <span style={{
-                  fontSize: '0.8rem',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.1em',
-                  color: 'var(--primary)',
-                  marginBottom: '0.5rem',
-                  display: 'block'
-                }}>
-                  {shop.category}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                  <span style={{
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: 'var(--primary)'
+                  }}>
+                    {s.category}
+                  </span>
+                  <span style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    backgroundColor: s.isRegistered ? '#10b981' : '#64748b',
+                    padding: '0.15rem 0.5rem',
+                    borderRadius: 'var(--radius-full)'
+                  }}>
+                    {s.isRegistered ? '🏪 Verified Marketplace Seller' : 'Demo Shop'}
+                  </span>
+                </div>
+
                 <h1 style={{
                   fontFamily: 'var(--font-display)',
-                  fontSize: '2.25rem',
-                  fontWeight: 700,
+                  fontSize: '2.5rem',
+                  fontWeight: 800,
                   letterSpacing: '-0.02em',
-                  color: 'var(--foreground)'
+                  color: 'var(--foreground)',
+                  margin: '0 0 0.5rem 0'
                 }}>
-                  {shop.name}
+                  {s.name}
                 </h1>
-                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginTop: '0.25rem' }}>
-                  Authentic local items delivered directly to your doorstep.
+                
+                <p style={{ fontSize: '0.95rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
+                  👤 Owned by <strong>{s.ownerName}</strong> • Registered since {s.registeredSince}
                 </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--foreground)', marginBottom: '1.5rem' }}>
+                  <span>📍 <strong>Address:</strong> {s.address}</span>
+                  <span>📞 <strong>Mobile:</strong> {s.phone}</span>
+                  <span>📧 <strong>Email:</strong> {s.email}</span>
+                  <span>🕒 <strong>Hours:</strong> {s.openingHours}</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.9rem' }}>
+                    <span style={{ color: '#eab308', fontSize: '1.1rem' }}>★</span>
+                    <strong style={{ fontSize: '1rem' }}>{s.rating}</strong>
+                    <span style={{ color: 'var(--text-muted)' }}>({s.reviewsCount} reviews)</span>
+                  </div>
+                  <span style={{
+                    fontSize: '0.85rem',
+                    color: s.isOpen ? '#10b981' : '#ef4444',
+                    fontWeight: 700
+                  }}>
+                    {s.isOpen ? '🟢 Open Now' : '🔴 Closed'}
+                  </span>
+                </div>
               </div>
 
-              {cartCount > 0 && (
-                <Link href="/customer/checkout" className="btn btn-primary" style={{ padding: '0.85rem 2rem', gap: '0.5rem' }}>
-                  Checkout Cart ({cartCount})
-                </Link>
-              )}
+              {/* Header Right Action Column */}
+              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', alignItems: 'flex-end', borderLeft: '1px solid #e2e8f0', paddingLeft: '2.5rem' }}>
+                {s.photoUrl ? (
+                  <img
+                    src={s.photoUrl}
+                    alt={s.name}
+                    style={{
+                      width: '120px',
+                      height: '120px',
+                      borderRadius: '12px',
+                      objectFit: 'cover',
+                      border: '1px solid var(--border)',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}
+                  />
+                ) : (
+                  <div style={{ width: '120px', height: '120px', borderRadius: '12px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem' }}>🏪</div>
+                )}
+                
+                {s.isRegistered && cartCount > 0 && (
+                  <Link href="/customer/checkout" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', width: '100%', textAlign: 'center', marginTop: '1rem' }}>
+                    Checkout Cart ({cartCount})
+                  </Link>
+                )}
+              </div>
             </div>
+
           </div>
 
           {/* Dynamic Activity Feed panel */}
@@ -708,16 +1001,60 @@ export default function ShopInventoryPage() {
             </div>
           )}
 
-          {/* Product Grid */}
-          <h2 style={{
-            fontFamily: 'var(--font-display)',
-            fontSize: '1.5rem',
-            fontWeight: 700,
-            marginBottom: '1.5rem',
-            color: 'var(--foreground)'
-          }}>
-            Available Products
-          </h2>
+          {/* Shop Statistics Cards Section */}
+          {s.isRegistered && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: '1rem',
+              marginBottom: '2.5rem'
+            }}>
+              <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', border: '1px solid var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Products</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{products.length} items</strong>
+              </div>
+              <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', border: '1px solid var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Available Products</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem', color: '#10b981' }}>{products.filter(p => (stocks[p.id] || 0) > 0).length} in stock</strong>
+              </div>
+              <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', border: '1px solid var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Out of Stock</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem', color: '#ef4444' }}>{products.filter(p => (stocks[p.id] || 0) === 0).length} sold out</strong>
+              </div>
+              <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', border: '1px solid var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Stock Units</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{Object.values(stocks).reduce((a, b) => a + b, 0)} units</strong>
+              </div>
+              <div style={{ padding: '1.25rem', backgroundColor: '#ffffff', border: '1px solid var(--border)', borderRadius: '8px', textAlign: 'center' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Inventory Value</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>₹{products.reduce((acc, p) => acc + (stocks[p.id] || 0) * p.price, 0).toFixed(2)}</strong>
+              </div>
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+            <h2 style={{
+              fontFamily: 'var(--font-display)',
+              fontSize: '1.5rem',
+              fontWeight: 700,
+              color: 'var(--foreground)',
+              margin: 0
+            }}>
+              Available Products
+            </h2>
+            <span style={{
+              fontSize: '0.7rem',
+              fontWeight: 700,
+              color: '#475569',
+              backgroundColor: '#e2e8f0',
+              padding: '0.2rem 0.6rem',
+              borderRadius: 'var(--radius-full)'
+            }}>
+              Demo Prototype Data
+            </span>
+            <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              * Product catalog, stock, and pricing are simulated for demonstration purposes.
+            </span>
+          </div>
 
           <div style={{
             display: 'grid',
@@ -786,37 +1123,75 @@ export default function ShopInventoryPage() {
                     ))}
                   </div>
 
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    style={{
-                      width: '100%',
-                      height: '200px',
-                      objectFit: 'cover',
-                      borderBottom: '1px solid var(--border)'
-                    }}
-                  />
+                  <div style={{ position: 'relative' }}>
+                    <OptimizedImage
+                      src={product.image}
+                      alt={product.name}
+                      category={product.category}
+                      style={{
+                        height: '200px',
+                        borderBottom: '1px solid var(--border)',
+                        borderRadius: '0'
+                      }}
+                    />
+                    {product.isBestSeller && (
+                      <span style={{
+                        position: 'absolute',
+                        top: '10px',
+                        right: '10px',
+                        backgroundColor: '#eab308',
+                        color: '#000000',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        padding: '0.2rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                      }}>
+                        ★ Best Seller
+                      </span>
+                    )}
+                  </div>
                   
                   <div style={{ padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div style={{ marginBottom: '1.5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <h3 style={{
-                          fontFamily: 'var(--font-display)',
-                          fontSize: '1.1rem',
-                          fontWeight: 600,
-                          color: 'var(--foreground)',
-                          lineHeight: 1.3
-                        }}>
-                          {product.name}
-                        </h3>
-                        <span style={{
-                          fontSize: '1.1rem',
-                          fontWeight: 700,
-                          color: 'var(--foreground)',
-                          flexShrink: 0
-                        }}>
-                          ₹{product.price}
-                        </span>
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{
+                            fontFamily: 'var(--font-display)',
+                            fontSize: '1.1rem',
+                            fontWeight: 600,
+                            color: 'var(--foreground)',
+                            lineHeight: 1.3,
+                            margin: '0 0 0.35rem 0'
+                          }}>
+                            {product.name}
+                          </h3>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                            <span>🏷 Brand: <strong>{(product as any).brand || 'Local Brand'}</strong></span>
+                            <span>📁 Category: {(product as any).category}</span>
+                            <span>⚖ Unit: {(product as any).unit || 'unit'}</span>
+                            <span>🟢 Status: <strong style={{ color: stock > 0 ? '#10b981' : '#ef4444' }}>{stock > 0 ? 'Available' : 'Out of Stock'}</strong></span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                          <span style={{
+                            fontSize: '1.1rem',
+                            fontWeight: 700,
+                            color: 'var(--foreground)',
+                            flexShrink: 0
+                          }}>
+                            ₹{product.price}
+                          </span>
+                          {product.discount && (
+                            <span style={{
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              color: '#ef4444'
+                            }}>
+                              {product.discount}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       <p style={{
@@ -827,6 +1202,27 @@ export default function ShopInventoryPage() {
                       }}>
                         {product.description}
                       </p>
+
+                      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                        {product.deliveryTime && (
+                          <span style={{
+                            fontSize: '0.75rem',
+                            color: 'var(--text-muted)',
+                            backgroundColor: '#f1f5f9',
+                            padding: '0.15rem 0.4rem',
+                            borderRadius: 'var(--radius-sm)',
+                            fontWeight: 500
+                          }}>
+                            ⏱ {product.deliveryTime}
+                          </span>
+                        )}
+                        {product.rating && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem', fontSize: '0.8rem' }}>
+                            <span style={{ color: '#eab308' }}>★</span>
+                            <span style={{ fontWeight: 600 }}>{product.rating}</span>
+                          </div>
+                        )}
+                      </div>
 
                       {/* Stock Quantity / Warning Badges */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -850,7 +1246,7 @@ export default function ShopInventoryPage() {
                         </div>
 
                         {/* Concurrency High-Traffic warning states */}
-                        {stock > 0 && stock < 5 && (
+                        {stock > 0 && stock <= 5 && (
                           <div style={{
                             fontSize: '0.75rem',
                             fontWeight: 700,
@@ -869,7 +1265,7 @@ export default function ShopInventoryPage() {
                           </div>
                         )}
 
-                        {stock >= 5 && stock < 10 && (
+                        {stock > 5 && stock < 10 && (
                           <div style={{
                             fontSize: '0.75rem',
                             fontWeight: 700,
@@ -890,7 +1286,15 @@ export default function ShopInventoryPage() {
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginTop: 'auto' }}>
-                      {stock > 0 ? (
+                      {!(shop as any).isRegistered ? (
+                        <button
+                          disabled
+                          className="btn btn-secondary"
+                          style={{ width: '100%', padding: '0.65rem 0', fontSize: '0.85rem', cursor: 'not-allowed', opacity: 0.6 }}
+                        >
+                          Not Available
+                        </button>
+                      ) : stock > 0 ? (
                         <div style={{ display: 'flex', gap: '0.75rem' }}>
                           <button
                             onClick={() => handleAddToCart(product)}
@@ -1002,6 +1406,115 @@ export default function ShopInventoryPage() {
               </div>
             </div>
           )}
+
+          {/* Shop Information Section */}
+          <div className="card" style={{ backgroundColor: '#ffffff', padding: '2.5rem', border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '2.5rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--foreground)' }}>
+              ℹ️ Shop Information
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem' }}>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.5rem' }}>About Shop</h4>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.5', margin: 0 }}>
+                  {s.description || 'No description available for this shop.'}
+                </p>
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.5rem' }}>Delivery Details</h4>
+                <ul style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.6', margin: 0, paddingLeft: '1.25rem' }}>
+                  <li>📍 <strong>Delivery Area:</strong> Within 5 km radius</li>
+                  <li>⏱ <strong>Estimated Time:</strong> 10-15 Mins (Express)</li>
+                  <li>📦 <strong>Minimum Order:</strong> ₹0</li>
+                </ul>
+              </div>
+              <div>
+                <h4 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--foreground)', marginBottom: '0.5rem' }}>Accepted Payments & Policies</h4>
+                <ul style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.6', margin: 0, paddingLeft: '1.25rem' }}>
+                  <li>💳 UPI Online & Cash on Delivery (COD)</li>
+                  <li>🔄 Returns within 24 hours for fresh items</li>
+                  <li>🛡 Standard buyer protection policies apply</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Customer Reviews Section */}
+          <div className="card" style={{ backgroundColor: '#ffffff', padding: '2.5rem', border: '1px solid var(--border)', borderRadius: '12px', marginBottom: '2.5rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, margin: 0, color: 'var(--foreground)' }}>
+                ⭐ Customer Reviews
+              </h3>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ color: '#eab308', fontSize: '1.25rem' }}>★</span>
+                <strong style={{ fontSize: '1.2rem' }}>{s.rating}</strong>
+                <span style={{ color: 'var(--text-muted)' }}>({s.reviewsCount} reviews total)</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <strong style={{ fontSize: '0.9rem' }}>Hariharan R</strong>
+                  <span style={{ color: '#eab308' }}>★★★★★</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                  "Excellent service and super fast delivery! The products are genuine and well packaged."
+                </p>
+              </div>
+              <div style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <strong style={{ fontSize: '0.9rem' }}>Deepika R</strong>
+                  <span style={{ color: '#eab308' }}>★★★★★</span>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
+                  "Very fresh organic milk and items are always in stock. Love the local shopping experience."
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Similar Shops Section */}
+          <div style={{ marginBottom: '4rem' }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, marginBottom: '1.5rem', color: 'var(--foreground)' }}>
+              🏪 Similar Shops Nearby
+            </h3>
+            {similarShops.length > 0 ? (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+                {similarShops.map((s: any) => (
+                  <Link key={s.id} href={`/customer/shop/${s.id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{
+                      backgroundColor: '#ffffff',
+                      border: '1px solid var(--border)',
+                      padding: '1.5rem',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      height: '100%',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      boxShadow: 'var(--shadow-sm)'
+                    }}>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '0.35rem' }}>
+                          {s.category}
+                        </span>
+                        <h4 style={{ fontSize: '1rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>{s.name}</h4>
+                        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.5rem 0', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                          📍 {s.address}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem', marginTop: '0.5rem' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#10b981' }}>🟢 Open Now</span>
+                        <span style={{ fontSize: '0.8rem', color: '#eab308' }}>★ 4.8</span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No similar shops found in this category.</p>
+            )}
+          </div>
 
         </div>
       </main>

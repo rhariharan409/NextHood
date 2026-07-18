@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useCart } from '@/context/CartContext';
+import OptimizedImage from '@/components/OptimizedImage';
 
 interface User {
   id: string;
@@ -767,14 +768,14 @@ export default function FlashFestPage() {
                     {prod.discountPercent}% OFF
                   </span>
 
-                  <img
+                  <OptimizedImage
                     src={prod.image}
                     alt={prod.name}
+                    category={prod.category}
                     style={{
-                      width: '100%',
                       height: '220px',
-                      objectFit: 'cover',
-                      borderBottom: '1px solid var(--border)'
+                      borderBottom: '1px solid var(--border)',
+                      borderRadius: '0'
                     }}
                   />
 

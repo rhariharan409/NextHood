@@ -181,3 +181,24 @@ export async function appendCsv<T>(filename: string, columns: (keyof T)[], recor
     dbLock.release();
   }
 }
+
+export interface ShopRecord {
+  id: string;
+  seller_id: string;
+  name: string;
+  category: string;
+  description: string;
+  address: string;
+  city: string;
+  state: string;
+  pincode: string;
+  latitude: string;
+  longitude: string;
+  phone_number: string;
+  opening_time: string;
+  closing_time: string;
+  logo: string;
+  status: string;
+  created_at: string;
+}
+

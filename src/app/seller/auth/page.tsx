@@ -62,7 +62,7 @@ export default function SellerAuthPage() {
         if (!res.ok) {
           setError(data.error || 'Signup failed.');
         } else {
-          setSuccess('Business account created! Please log in.');
+          setSuccess('Seller account created successfully.');
           // Switch to login tab and clear signup inputs
           setTimeout(() => {
             setIsLogin(true);

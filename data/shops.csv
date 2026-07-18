@@ -1,0 +1,4 @@
+id,seller_id,name,category,description,address,city,state,pincode,latitude,longitude,phone_number,opening_time,closing_time,logo,status,created_at
+acb322c6-8ecd-4def-9b4d-e84fb73811c1,7b33b26d-423c-4f69-8c7d-4d40d35439c5,Hariharan Shop,Restaurant,super duper,"MADHA ENGINEERING COLLEGE
+Kundrathur - Sriperumbudur Rd
+Madha Nagar, Kundrathur",Chennai,Tamil Nadu,600069,12.929648,80.128887,9025521474,09:00,21:00,https://in.pinterest.com/pin/cursive-calligraphy-of-the-word-har--658721882990976932/,Active,2026-07-18T17:34:31.043Z

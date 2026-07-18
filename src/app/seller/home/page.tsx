@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
+import Link from 'next/link';
 
 interface User {
   id: string;
@@ -13,10 +14,24 @@ interface User {
 
 interface OrderRecord {
   orderId: string;
-  shopName: string;
+  orderNumber: string;
+  customerId: string;
+  customerName: string;
+  sellerId: string;
+  sellerName: string;
+  storeName: string;
   grandTotal: number;
-  deliveryTime: string;
+  subtotal: number;
+  deliveryCharge: number;
+  platformFee: number;
+  tax: number;
+  paymentMethod: string;
+  deliveryAddress: string;
+  latitude: number;
+  longitude: number;
   created_at: string;
+  status: string;
+  items: any[];
   logisticsPlan?: {
     vehicle: string;
     icon: string;
@@ -36,6 +51,15 @@ export default function SellerHomePage() {
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
 
+  // Shop details
+  const [shopAddress, setShopAddress] = useState('');
+  const [shopCategory, setShopCategory] = useState('');
+  const [productsCount, setProductsCount] = useState(0);
+  const [totalInventory, setTotalInventory] = useState(0);
+  const [revenue, setRevenue] = useState(0);
+  const [lowStockAlertsCount, setLowStockAlertsCount] = useState(0);
+  const [inventoryValue, setInventoryValue] = useState(0);
+
   // Toggles / controls for Future Ready setup
   const [trafficAPIEnabled, setTrafficAPIEnabled] = useState(true);
   const [weatherAPIEnabled, setWeatherAPIEnabled] = useState(false);
@@ -51,74 +75,52 @@ export default function SellerHomePage() {
         }
         const data = await res.json();
         if (data.authenticated && data.user.role === 'seller') {
+          if (!data.profileCompleted) {
+            router.push('/seller/complete-profile');
+            return;
+          }
           setUser(data.user);
         } else {
           router.push('/seller/auth');
           return;
         }
 
-        // Load active orders from localStorage
-        const stored = JSON.parse(localStorage.getItem('nexthood_orders') || '[]');
-        
-        // Inject mock logistics plans for older orders that don't have them
-        const processed = stored.map((o: any, idx: number) => {
-          if (!o.logisticsPlan) {
-            const drivers = ['Ramesh Kumar', 'Suresh Singh', 'Arjun Dev', 'Vikram Sen'];
-            return {
-              ...o,
-              logisticsPlan: {
-                vehicle: '🏍 Bike',
-                icon: '🏍',
-                reason: 'Standard local bike dispatch based on lightweight product criteria.',
-                deliveryTime: '12 Minutes',
-                fuelCost: 0,
-                distance: 1.2,
-                co2Saved: '100% (Zero emission electric cycle)',
-                driverName: drivers[idx % drivers.length],
-                expectedPickup: '5 mins'
-              }
-            };
-          }
-          return o;
-        });
+        // Load active orders from backend database
+        const ordersRes = await fetch(`/api/orders?shopId=${data.user.id}`);
+        let processed: OrderRecord[] = [];
+        if (ordersRes.ok) {
+          const ordersData = await ordersRes.json();
+          processed = ordersData.orders || [];
+        }
 
-        // Add default mock orders if none exist so the seller portal is fully populated on load
-        if (processed.length === 0) {
-          processed.push({
-            orderId: 'NH-829103',
-            shopName: data.user.name,
-            grandTotal: 570,
-            deliveryTime: '10-15 mins',
-            created_at: new Date().toISOString(),
-            logisticsPlan: {
-              vehicle: '❄ Refrigerated Vehicle',
-              icon: '❄',
-              reason: 'Contains cold-chain items (Fudge Cake) requiring regulated cooling.',
-              deliveryTime: '18 Minutes',
-              fuelCost: 24,
-              distance: 2.0,
-              co2Saved: '15% (Reduced emissions)',
-              driverName: 'Arjun Dev',
-              expectedPickup: '4 mins'
-            }
-          }, {
-            orderId: 'NH-928172',
-            shopName: data.user.name,
-            grandTotal: 120,
-            deliveryTime: '10-15 mins',
-            created_at: new Date().toISOString(),
-            logisticsPlan: {
-              vehicle: '🏍 Bike',
-              icon: '🏍',
-              reason: 'Small local dispatch with 1 product under 2 km.',
-              deliveryTime: '10 Minutes',
-              fuelCost: 0,
-              distance: 0.8,
-              co2Saved: '100% (Zero emission electric cycle)',
-              driverName: 'Ramesh Kumar',
-              expectedPickup: '3 mins'
-            }
-          });
+        // Fetch shop profile details
+        const shopRes = await fetch(`/api/places/details?id=${data.user.id}`);
+        if (shopRes.ok) {
+          const shopData = await shopRes.json();
+          if (shopData.business) {
+            setShopAddress(shopData.business.address);
+            setShopCategory(shopData.business.category);
+          }
+        }
+
+        // Load seller products count, inventory, and revenue from backend
+        const productsRes = await fetch('/api/seller/products');
+        if (productsRes.ok) {
+          const productsData = await productsRes.json();
+          const sellerProds = productsData.products || [];
+          setProductsCount(sellerProds.length);
+          
+          const inventorySum = sellerProds.reduce((acc: number, p: any) => acc + (parseInt(p.stock) || 0), 0);
+          setTotalInventory(inventorySum);
+          
+          const revenueSum = sellerProds.reduce((acc: number, p: any) => acc + (parseFloat(p.revenue) || 0), 0);
+          setRevenue(revenueSum);
+
+          const lowStockCount = sellerProds.filter((p: any) => (parseInt(p.stock) || 0) <= (parseInt(p.min_stock_alert) || 5)).length;
+          setLowStockAlertsCount(lowStockCount);
+
+          const valueSum = sellerProds.reduce((acc: number, p: any) => acc + (parseInt(p.stock) || 0) * (parseFloat(p.price) || 0), 0);
+          setInventoryValue(valueSum);
         }
 
         setOrders(processed);
@@ -130,6 +132,45 @@ export default function SellerHomePage() {
     }
     checkAuth();
   }, [router]);
+
+  // Poll for new orders and dashboard statistics updates every 3 seconds
+  useEffect(() => {
+    if (!user) return;
+    
+    const interval = setInterval(async () => {
+      try {
+        const ordersRes = await fetch(`/api/orders?shopId=${user.id}`);
+        if (ordersRes.ok) {
+          const ordersData = await ordersRes.json();
+          setOrders(ordersData.orders || []);
+        }
+
+        // Also poll for products, stock and revenue updates
+        const productsRes = await fetch('/api/seller/products');
+        if (productsRes.ok) {
+          const productsData = await productsRes.json();
+          const sellerProds = productsData.products || [];
+          setProductsCount(sellerProds.length);
+          
+          const inventorySum = sellerProds.reduce((acc: number, p: any) => acc + (parseInt(p.stock) || 0), 0);
+          setTotalInventory(inventorySum);
+          
+          const revenueSum = sellerProds.reduce((acc: number, p: any) => acc + (parseFloat(p.revenue) || 0), 0);
+          setRevenue(revenueSum);
+
+          const lowStockCount = sellerProds.filter((p: any) => (parseInt(p.stock) || 0) <= (parseInt(p.min_stock_alert) || 5)).length;
+          setLowStockAlertsCount(lowStockCount);
+
+          const valueSum = sellerProds.reduce((acc: number, p: any) => acc + (parseInt(p.stock) || 0) * (parseFloat(p.price) || 0), 0);
+          setInventoryValue(valueSum);
+        }
+      } catch (err) {
+        console.error('Error polling for updates:', err);
+      }
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [user]);
 
   const handleLogout = async () => {
     try {
@@ -184,6 +225,40 @@ export default function SellerHomePage() {
       <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 2rem' }}>
         <div className="container" style={{ maxWidth: '1100px', display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
           
+          {/* Sub Navigation */}
+          <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+            <Link href="/seller/home" style={{
+              fontWeight: 600,
+              color: 'var(--primary)',
+              textDecoration: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              backgroundColor: 'rgba(16, 185, 129, 0.08)'
+            }}>
+              🚚 Dispatches & Orders
+            </Link>
+            <Link href="/seller/products" style={{
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              transition: 'var(--transition)'
+            }}>
+              📦 Product Management
+            </Link>
+            <Link href="/seller/orders" style={{
+              fontWeight: 500,
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              padding: '0.5rem 1rem',
+              borderRadius: 'var(--radius-md)',
+              transition: 'var(--transition)'
+            }}>
+              📦 My Orders
+            </Link>
+          </div>
+
           {/* Top welcome */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
@@ -199,6 +274,51 @@ export default function SellerHomePage() {
               <span style={{ backgroundColor: 'var(--primary)', color: '#ffffff', padding: '0.45rem 1rem', borderRadius: 'var(--radius-full)', fontSize: '0.8rem', fontWeight: 700 }}>
                 🟢 Live Dispatch Online
               </span>
+            </div>
+          </div>
+
+          {/* Business Information Card */}
+          <div className="card" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', backgroundColor: '#ffffff', border: '1px solid var(--border)', padding: '2rem' }}>
+            <div>
+              <span style={{ fontSize: '0.75rem', backgroundColor: 'rgba(16, 185, 129, 0.1)', color: 'var(--primary)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                🏪 GPS Verified Marketplace Shop
+              </span>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 700, marginTop: '0.5rem', marginBottom: '0.25rem' }}>
+                {user.name}
+              </h2>
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                Category: <strong>{shopCategory || 'Grocery Store'}</strong>
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <span>📍 <strong>Address:</strong> {shopAddress || 'Loading address...'}</span>
+              </div>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Active Products</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{productsCount}</strong>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Stock Units</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{totalInventory} units</strong>
+              </div>
+              <div style={{ padding: '1rem', background: lowStockAlertsCount > 0 ? '#fef2f2' : '#f8fafc', borderRadius: '8px', border: `1px solid ${lowStockAlertsCount > 0 ? '#fca5a5' : '#e2e8f0'}` }}>
+                <span style={{ fontSize: '0.75rem', color: lowStockAlertsCount > 0 ? '#ef4444' : 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Low Stock Alerts</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem', color: lowStockAlertsCount > 0 ? '#ef4444' : 'var(--foreground)' }}>{lowStockAlertsCount} alerts</strong>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Inventory Value</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>₹{inventoryValue.toFixed(2)}</strong>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Orders Received</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{orders.length}</strong>
+              </div>
+              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Revenue Earned</span>
+                <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem', color: '#10b981' }}>₹{revenue}</strong>
+              </div>
             </div>
           </div>
 
@@ -252,61 +372,92 @@ export default function SellerHomePage() {
           {/* Active Deliveries log */}
           <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid var(--border)' }}>
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem' }}>
-              Smart Logistic Dispatches
+              Received Marketplace Orders ({orders.length})
             </h2>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {orders.map((ord) => {
-                const plan = ord.logisticsPlan || {
-                  vehicle: '🏍 Bike',
-                  icon: '🏍',
-                  reason: 'Standard local dispatcher.',
-                  deliveryTime: '12 Mins',
-                  fuelCost: 0,
-                  distance: 1.2,
-                  co2Saved: '100%',
-                  driverName: 'Ramesh Kumar',
-                  expectedPickup: '5 mins'
-                };
-
-                return (
+              {orders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)' }}>
+                  No orders received yet. Active orders placed by customers will appear here in real-time.
+                </div>
+              ) : (
+                orders.map((ord) => (
                   <div key={ord.orderId} style={{
                     padding: '1.5rem',
                     border: '1.5px solid var(--border)',
                     borderRadius: 'var(--radius-md)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: '1.5rem'
+                    display: 'grid',
+                    gridTemplateColumns: '1.5fr 1.2fr 1fr',
+                    gap: '1.5rem',
+                    alignItems: 'start'
                   }}>
+                    {/* Column 1: Order Meta & Products */}
                     <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#475569', padding: '0.25rem 0.5rem', borderRadius: '3px', fontWeight: 700 }}>
-                          {ord.orderId}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', backgroundColor: 'var(--primary)', color: '#ffffff', padding: '0.2rem 0.5rem', borderRadius: '3px', fontWeight: 700 }}>
+                          {ord.orderNumber || ord.orderId}
                         </span>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Pickup: <strong>{plan.expectedPickup}</strong></span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          🕒 {new Date(ord.created_at || Date.now()).toLocaleString()}
+                        </span>
+                      </div>
+                      
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Customer</span>
+                        <strong style={{ fontSize: '0.95rem' }}>{ord.customerName || 'Guest User'}</strong>
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <span style={{ fontSize: '2rem' }}>{plan.icon}</span>
-                        <div>
-                          <strong style={{ fontSize: '1rem', display: 'block' }}>{plan.vehicle}</strong>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            Driver: <strong>{plan.driverName}</strong> • Distance: <strong>{plan.distance} km</strong>
-                          </span>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Products Ordered</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                          {(ord.items || []).map((item: any, idx: number) => (
+                            <span key={idx} style={{ fontSize: '0.85rem', color: 'var(--foreground)' }}>
+                              • {item.name || item.product?.name} <strong>x{item.quantity}</strong>
+                            </span>
+                          ))}
                         </div>
                       </div>
                     </div>
 
+                    {/* Column 2: Logistics / Delivery details */}
+                    <div>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Delivery Address</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--foreground)', display: 'block', lineHeight: '1.4' }}>
+                          {ord.deliveryAddress}
+                        </span>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Payment Method</span>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                          {ord.paymentMethod === 'cod' ? '💵 Cash on Delivery' : '💳 Online Payment'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Column 3: Totals & Status */}
                     <div style={{ textAlign: 'right' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Est. Delivery</span>
-                      <strong style={{ fontSize: '1.15rem', color: 'var(--primary)' }}>{plan.deliveryTime}</strong>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>Reason: {plan.reason}</span>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Total Amount</span>
+                        <strong style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>₹{ord.grandTotal}</strong>
+                      </div>
+                      <div>
+                        <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Status</span>
+                        <span style={{
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          backgroundColor: '#ecfdf5',
+                          color: '#047857',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px'
+                        }}>
+                          {ord.status}
+                        </span>
+                      </div>
                     </div>
                   </div>
-                );
-              })}
+                ))
+              )}
             </div>
           </div>
 

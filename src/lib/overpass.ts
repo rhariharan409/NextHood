@@ -6,10 +6,12 @@ export interface Business {
   lon: number;
   address: string;
   distance: number; // in meters
-  rating: number;
+  rating: number | string;
   reviewsCount: number;
   isOpen: boolean;
   photoUrl?: string;
+  isRegistered?: boolean;
+  openingHours?: string;
 }
 
 // Haversine formula to calculate distance between two coordinates in meters

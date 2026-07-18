@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import OptimizedImage from '@/components/OptimizedImage';
 
 interface User {
   id: string;
@@ -533,17 +534,20 @@ export default function SmartSearchPage() {
                         </span>
                       )}
 
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        style={{
-                          width: '100px',
-                          height: '100px',
-                          objectFit: 'cover',
-                          borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border)'
-                        }}
-                      />
+                      <div style={{ width: '100px', height: '100px' }}>
+                        <OptimizedImage
+                          src={item.image}
+                          alt={item.name}
+                          category={item.category}
+                          style={{
+                            width: '100px',
+                            height: '100px',
+                            objectFit: 'cover',
+                            borderRadius: 'var(--radius-md)',
+                            border: '1px solid var(--border)'
+                          }}
+                        />
+                      </div>
 
                       <div style={{ flex: 1, minWidth: '220px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

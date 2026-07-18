@@ -50,9 +50,33 @@ const userIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 
-// Custom Icon for Shops
-const shopIcon = L.divIcon({
-  className: 'custom-shop-marker',
+// Custom Gray Icon for Unregistered/Static Shops
+const staticShopIcon = L.divIcon({
+  className: 'custom-static-shop-marker',
+  html: `
+    <div style="
+      width: 32px;
+      height: 32px;
+      background-color: #f1f5f9;
+      border: 2px solid #94a3b8;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+      font-size: 1.1rem;
+      color: #64748b;
+    ">
+      🏪
+    </div>
+  `,
+  iconSize: [32, 32],
+  iconAnchor: [16, 32],
+});
+
+// Custom Green Icon for Registered/Active Shops
+const activeShopIcon = L.divIcon({
+  className: 'custom-active-shop-marker',
   html: `
     <div style="
       width: 32px;
@@ -63,20 +87,35 @@ const shopIcon = L.divIcon({
       display: flex;
       align-items: center;
       justify-content: center;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
       font-size: 1.1rem;
-      transition: all 0.2s ease-in-out;
+      position: relative;
     ">
       🏪
+      <span style="
+        position: absolute;
+        top: -4px;
+        right: -4px;
+        background-color: #10b981;
+        color: white;
+        border-radius: 50%;
+        width: 12px;
+        height: 12px;
+        font-size: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid white;
+      ">✓</span>
     </div>
   `,
   iconSize: [32, 32],
   iconAnchor: [16, 32],
 });
 
-// Custom Icon for Highlighted Shop
-const selectedShopIcon = L.divIcon({
-  className: 'custom-selected-shop-marker',
+// Highlighted active shop icon
+const selectedActiveShopIcon = L.divIcon({
+  className: 'custom-selected-active-shop-marker',
   html: `
     <div style="
       width: 40px;
@@ -88,6 +127,46 @@ const selectedShopIcon = L.divIcon({
       align-items: center;
       justify-content: center;
       box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+      font-size: 1.3rem;
+      transform: translateY(-4px) scale(1.1);
+      position: relative;
+    ">
+      🏪
+      <span style="
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        background-color: #ffffff;
+        color: #10b981;
+        border-radius: 50%;
+        width: 14px;
+        height: 14px;
+        font-size: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+      ">✓</span>
+    </div>
+  `,
+  iconSize: [40, 40],
+  iconAnchor: [20, 40],
+});
+
+// Highlighted static shop icon
+const selectedStaticShopIcon = L.divIcon({
+  className: 'custom-selected-static-shop-marker',
+  html: `
+    <div style="
+      width: 40px;
+      height: 40px;
+      background-color: #64748b;
+      border: 3px solid #ffffff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 15px -3px rgba(100, 116, 139, 0.3);
       font-size: 1.3rem;
       transform: translateY(-4px) scale(1.1);
     ">
@@ -149,7 +228,7 @@ export default function Map({
             <Marker
               key={biz.id}
               position={[biz.lat, biz.lon]}
-              icon={isSelected ? selectedShopIcon : shopIcon}
+              icon={isSelected ? ((biz as any).isRegistered ? selectedActiveShopIcon : selectedStaticShopIcon) : ((biz as any).isRegistered ? activeShopIcon : staticShopIcon)}
               eventHandlers={{
                 click: () => {
                   onSelectBusiness(biz);

@@ -9,6 +9,10 @@ export interface Product {
   description: string;
   image: string;
   category: string;
+  discount?: string;
+  deliveryTime?: string;
+  rating?: number;
+  isBestSeller?: boolean;
 }
 
 export interface CartItem {
@@ -81,11 +85,18 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setShop(shopDetails);
     }
 
+    const maxStock = (product as any).stock !== undefined ? Number((product as any).stock) : 9999;
+
     setCartItems((prevItems) => {
       const existing = prevItems.find((item) => item.product.id === product.id);
       if (existing) {
+        const nextQty = existing.quantity + 1;
+        if (nextQty > maxStock) {
+          alert(`Cannot add more "${product.name}". Only ${maxStock} units available.`);
+          return prevItems;
+        }
         return prevItems.map((item) =>
-          item.product.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.product.id === product.id ? { ...item, quantity: nextQty } : item
         );
       }
       return [...prevItems, { product, quantity: 1 }];
@@ -98,9 +109,17 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.product.id === productId ? { ...item, quantity } : item
-      )
+      prevItems.map((item) => {
+        if (item.product.id === productId) {
+          const maxStock = (item.product as any).stock !== undefined ? Number((item.product as any).stock) : 9999;
+          if (quantity > maxStock) {
+            alert(`Cannot increase quantity for "${item.product.name}". Only ${maxStock} units available.`);
+            return item;
+          }
+          return { ...item, quantity };
+        }
+        return item;
+      })
     );
   };
 
