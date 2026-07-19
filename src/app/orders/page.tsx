@@ -33,6 +33,7 @@ interface Order {
   created_at: string;
   status: string;
   items: OrderItem[];
+  rejectReason?: string;
 }
 
 export default function CustomerOrdersPage() {
@@ -43,6 +44,15 @@ export default function CustomerOrdersPage() {
   const [user, setUser] = useState<any>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [toasts, setToasts] = useState<{ id: number; message: string; type: string }[]>([]);
+
+  const addToast = (message: string, type = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
 
   const fetchOrders = async (userId: string) => {
     try {
@@ -83,13 +93,43 @@ export default function CustomerOrdersPage() {
     loadUserAndOrders();
   }, [router]);
 
+  // Real-time synchronization via WebSockets
   useEffect(() => {
-    if (!user) return;
+    if (!user || orders.length === 0) return;
+
+    const socket = new WebSocket('ws://localhost:3001');
+
+    socket.onopen = () => {
+      console.log('[DEBUG] Customer WebSocket subscribed to order updates');
+      const uniqueSellerIds = Array.from(new Set(orders.map(o => o.sellerId)));
+      uniqueSellerIds.forEach(sellerId => {
+        socket.send(JSON.stringify({ type: 'subscribe', shopId: sellerId }));
+      });
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'stock_update' && data.updateType === 'order_status_change') {
+          console.log('[DEBUG] Customer orders list updated via WS broadcast');
+          fetchOrders(user.id);
+          addToast('🔔 Your order status was updated by the merchant!', 'success');
+        }
+      } catch (e) {
+        console.error('WS customer message error:', e);
+      }
+    };
+
+    // Backup polling every 4 seconds
     const interval = setInterval(() => {
       fetchOrders(user.id);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [user]);
+    }, 4000);
+
+    return () => {
+      socket.close();
+      clearInterval(interval);
+    };
+  }, [user, orders.length]);
 
   const handleLogout = async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
@@ -142,23 +182,23 @@ export default function CustomerOrdersPage() {
             <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.75rem', fontWeight: 800, letterSpacing: '-0.02em', margin: 0 }}>
               Your Orders ({orders.length})
             </h2>
-            <Link href="/customer/home" className="btn btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
+            <Link href="/customer/home" className="btn btn-outline" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', border: '1px solid var(--border)', borderRadius: '8px', textDecoration: 'none', color: 'var(--text-muted)', fontWeight: 600 }}>
               🏪 Back to Shops Map
             </Link>
           </div>
 
           {orders.length === 0 ? (
-            <div className="card" style={{ backgroundColor: '#ffffff', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+            <div className="card" style={{ backgroundColor: '#ffffff', padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', borderRadius: '12px', border: '1px solid var(--border)' }}>
               <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '1rem' }}>📦</span>
               <p style={{ fontSize: '1rem', margin: '0 0 1.5rem 0' }}>You haven't placed any orders yet.</p>
-              <Link href="/customer/home" className="btn btn-primary" style={{ display: 'inline-block' }}>
+              <Link href="/customer/home" className="btn btn-primary" style={{ display: 'inline-block', backgroundColor: 'var(--primary)', color: '#ffffff', textDecoration: 'none', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: 600 }}>
                 Start Shopping
               </Link>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               {orders.map((order) => (
-                <div key={order.orderId} className="card" style={{ backgroundColor: '#ffffff', padding: '1.75rem', border: '1.5px solid var(--border)' }}>
+                <div key={order.orderId} className="card" style={{ backgroundColor: '#ffffff', padding: '1.75rem', borderRadius: '12px', border: '1.5px solid var(--border)' }}>
                   {/* Order header */}
                   <div style={{
                     display: 'flex',
@@ -179,12 +219,22 @@ export default function CustomerOrdersPage() {
                       <strong style={{ fontSize: '0.95rem', color: 'var(--primary)' }}>{order.storeName}</strong>
                     </div>
                     <div>
-                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block' }}>Status</span>
+                      <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--text-muted)', display: 'block', marginBottom: '0.2rem' }}>Status</span>
                       <span style={{
                         fontSize: '0.75rem',
                         fontWeight: 700,
-                        backgroundColor: '#e0f2fe',
-                        color: '#0369a1',
+                        backgroundColor:
+                          order.status === 'Pending' ? '#fef3c7' :
+                          order.status === 'Accepted' ? '#d1e7ff' :
+                          order.status === 'Packed' ? '#f3e8ff' :
+                          order.status === 'Out For Delivery' ? '#e0e7ff' :
+                          order.status === 'Delivered' ? '#d1fae5' : '#fee2e2',
+                        color:
+                          order.status === 'Pending' ? '#b45309' :
+                          order.status === 'Accepted' ? '#0b5ed7' :
+                          order.status === 'Packed' ? '#7e22ce' :
+                          order.status === 'Out For Delivery' ? '#4338ca' :
+                          order.status === 'Delivered' ? '#047857' : '#b91c1c',
                         padding: '0.2rem 0.5rem',
                         borderRadius: '4px'
                       }}>
@@ -197,6 +247,42 @@ export default function CustomerOrdersPage() {
                         {new Date(order.created_at).toLocaleString()}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Customer Status Message */}
+                  <div style={{
+                    backgroundColor:
+                      order.status === 'Pending' ? '#fffbeb' :
+                      order.status === 'Accepted' ? '#f0f9ff' :
+                      order.status === 'Packed' ? '#faf5ff' :
+                      order.status === 'Out For Delivery' ? '#eef2ff' :
+                      order.status === 'Delivered' ? '#f0fdf4' : '#fef2f2',
+                    border: '1px solid ' + (
+                      order.status === 'Pending' ? '#fef3c7' :
+                      order.status === 'Accepted' ? '#d1e7ff' :
+                      order.status === 'Packed' ? '#e9d5ff' :
+                      order.status === 'Out For Delivery' ? '#c7d2fe' :
+                      order.status === 'Delivered' ? '#bbf7d0' : '#fca5a5'
+                    ),
+                    padding: '0.85rem 1.25rem',
+                    borderRadius: '8px',
+                    fontSize: '0.9rem',
+                    marginBottom: '1.25rem',
+                    fontWeight: 500,
+                    color:
+                      order.status === 'Pending' ? '#92400e' :
+                      order.status === 'Accepted' ? '#0369a1' :
+                      order.status === 'Packed' ? '#6b21a8' :
+                      order.status === 'Out For Delivery' ? '#3730a3' :
+                      order.status === 'Delivered' ? '#166534' : '#991b1b'
+                  }}>
+                    {order.status === 'Pending' && '🟡 Order Placed: Waiting for shop confirmation.'}
+                    {order.status === 'Accepted' && `🟢 Order Accepted: Your order has been accepted by ${order.storeName || order.sellerName}.`}
+                    {order.status === 'Packed' && '📦 Packed: Your order has been packed.'}
+                    {order.status === 'Out For Delivery' && '🚚 Out for Delivery: Delivery partner has picked up your order.'}
+                    {order.status === 'Delivered' && '✅ Delivered: Order delivered successfully.'}
+                    {order.status === 'Rejected' && `❌ Rejected: Unfortunately your order was rejected. Reason: ${order.rejectReason || 'Out of Stock'}`}
+                    {order.status === 'Cancelled' && '❌ Cancelled: Your order has been cancelled.'}
                   </div>
 
                   {/* Order Products List */}
@@ -266,6 +352,24 @@ export default function CustomerOrdersPage() {
 
         </div>
       </main>
+
+      {/* Realtime Toast Container */}
+      <div style={{ position: 'fixed', bottom: '1.5rem', right: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', zIndex: 1000 }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            backgroundColor: '#10b981',
+            color: '#ffffff',
+            padding: '0.75rem 1.25rem',
+            borderRadius: '8px',
+            fontSize: '0.85rem',
+            fontWeight: 600,
+            boxShadow: 'var(--shadow-md)',
+            animation: 'slide-down 0.2s ease-out'
+          }}>
+            {t.message}
+          </div>
+        ))}
+      </div>
 
       <style>{`
         @keyframes slide-down {

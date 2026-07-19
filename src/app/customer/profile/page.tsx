@@ -17,11 +17,15 @@ interface User {
 
 interface OrderRecord {
   orderId: string;
+  orderNumber: string;
   shopName: string;
   itemsCount: number;
   totalAmount: number;
   date: string;
-  status: 'Pending' | 'Active' | 'Delivered' | 'Cancelled';
+  status: string;
+  paymentMethod: string;
+  items: any[];
+  sellerId: string;
 }
 
 interface Address {
@@ -82,7 +86,7 @@ export default function ProfileDashboardPage() {
 
   // Notifications State
   const [notifications, setNotifications] = useState([
-    { id: '1', text: '⚡ Your FlashFest order NH-829173 is out for delivery!', read: false },
+    { id: '1', text: '⚡ Your FlashFest order is out for delivery!', read: false },
     { id: '2', text: '🔥 Premium Chocolate Fudge Cake just got restocked at Nexthood Central Bakery!', read: false },
     { id: '3', text: '💡 Price drop alert: Full Cream Milk now ₹74 (was ₹80).', read: true }
   ]);
@@ -119,6 +123,42 @@ export default function ProfileDashboardPage() {
     }
   ];
 
+  const fetchOrders = async (userId: string) => {
+    try {
+      const ordersRes = await fetch(`/api/orders?customerId=${userId}`);
+      if (ordersRes.ok) {
+        const data = await ordersRes.json();
+        const realOrders = data.orders || [];
+        
+        // Sort raw orders by created_at newest first
+        realOrders.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        const formatted: OrderRecord[] = realOrders.map((o: any) => ({
+          orderId: o.orderId,
+          orderNumber: o.orderNumber,
+          shopName: o.storeName || o.sellerName || 'Local Shop',
+          itemsCount: o.items?.reduce((acc: number, i: any) => acc + i.quantity, 0) || 1,
+          totalAmount: o.grandTotal || 0,
+          date: new Date(o.created_at).toLocaleString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
+          }),
+          status: o.status,
+          paymentMethod: o.paymentMethod === 'cod' ? 'Cash on Delivery' : 'Online Payment (UPI)',
+          items: o.items || [],
+          sellerId: o.sellerId
+        }));
+        setOrders(formatted);
+      }
+    } catch (err) {
+      console.error('Failed to fetch orders:', err);
+    }
+  };
+
   // 1. Load active authenticated customer details and order history
   useEffect(() => {
     async function checkAuth() {
@@ -135,35 +175,11 @@ export default function ProfileDashboardPage() {
             phone: '+91 98765 43210',
             location: 'Latitude: 12.9716, Longitude: 77.5946'
           });
+          await fetchOrders(data.user.id);
         } else {
           router.push('/customer/auth');
           return;
         }
-
-        // Load real orders from localStorage
-        const storedOrders = JSON.parse(localStorage.getItem('nexthood_orders') || '[]');
-        const formatted: OrderRecord[] = storedOrders.map((o: any) => ({
-          orderId: o.orderId || 'NH-XXXXXX',
-          shopName: o.shopName || 'Local Shop',
-          itemsCount: o.items?.reduce((acc: number, i: any) => acc + i.quantity, 0) || 1,
-          totalAmount: o.grandTotal || 0,
-          date: o.created_at ? new Date(o.created_at).toLocaleDateString() : 'Today',
-          status: 'Active'
-        }));
-
-        // Add some default delivered mock orders if none exist
-        if (formatted.length === 0) {
-          formatted.push({
-            orderId: 'NH-382910',
-            shopName: 'Nexthood Central Bakery',
-            itemsCount: 2,
-            totalAmount: 570,
-            date: '16/07/2026',
-            status: 'Delivered'
-          });
-        }
-
-        setOrders(formatted);
       } catch (err) {
         router.push('/customer/auth');
       } finally {
@@ -172,6 +188,37 @@ export default function ProfileDashboardPage() {
     }
     checkAuth();
   }, [router]);
+
+  // WebSocket Live Sync for orders status change
+  useEffect(() => {
+    if (!user || orders.length === 0) return;
+
+    const socket = new WebSocket('ws://localhost:3001');
+
+    socket.onopen = () => {
+      console.log('[DEBUG] Customer profile subscribed to WebSocket updates');
+      const uniqueSellerIds = Array.from(new Set(orders.map(o => o.sellerId)));
+      uniqueSellerIds.forEach(sellerId => {
+        socket.send(JSON.stringify({ type: 'subscribe', shopId: sellerId }));
+      });
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'stock_update' && data.updateType === 'order_status_change') {
+          console.log('[DEBUG] Reloading profile orders via WS status update');
+          fetchOrders(user.id);
+        }
+      } catch (e) {
+        console.error('Error processing WS update:', e);
+      }
+    };
+
+    return () => {
+      socket.close();
+    };
+  }, [user, orders.length]);
 
   const handleLogout = async () => {
     try {
@@ -496,45 +543,69 @@ export default function ProfileDashboardPage() {
                 </div>
 
                 {orders.length === 0 ? (
-                  <div className="card" style={{ backgroundColor: '#ffffff', padding: '3rem', textAlign: 'center', border: '1px solid var(--border)' }}>
+                  <div className="card" style={{ backgroundColor: '#ffffff', padding: '3rem', textAlign: 'center', border: '1px solid var(--border)', borderRadius: '12px' }}>
                     <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '1rem' }}>📦</span>
                     <h3>No orders placed yet</h3>
-                    <p style={{ color: 'var(--text-muted)' }}>Go to the customer home page to explore stores.</p>
+                    <p style={{ color: 'var(--text-muted)' }}>Go to the customer home page to explore stores and place orders.</p>
                   </div>
                 ) : (
                   orders.map((ord) => (
-                    <div key={ord.orderId} className="card" style={{ backgroundColor: '#ffffff', padding: '1.75rem', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem' }}>
-                      <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                          <span style={{
-                            backgroundColor: ord.status === 'Delivered' ? '#d1fae5' : '#ffedd5',
-                            color: ord.status === 'Delivered' ? '#065f46' : '#ea580c',
-                            fontSize: '0.75rem',
-                            fontWeight: 700,
-                            padding: '0.25rem 0.65rem',
-                            borderRadius: 'var(--radius-sm)'
-                          }}>
-                            {ord.status}
-                          </span>
-                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>ID: <strong>{ord.orderId}</strong></span>
+                    <div key={ord.orderId} className="card" style={{ backgroundColor: '#ffffff', padding: '1.75rem', border: '1px solid var(--border)', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                            <span style={{
+                              backgroundColor:
+                                ord.status === 'Pending' ? '#fef3c7' :
+                                ord.status === 'Accepted' ? '#d1e7ff' :
+                                ord.status === 'Packed' ? '#f3e8ff' :
+                                ord.status === 'Out For Delivery' ? '#e0e7ff' :
+                                ord.status === 'Delivered' ? '#d1fae5' : '#fee2e2',
+                              color:
+                                ord.status === 'Pending' ? '#b45309' :
+                                ord.status === 'Accepted' ? '#0b5ed7' :
+                                ord.status === 'Packed' ? '#7e22ce' :
+                                ord.status === 'Out For Delivery' ? '#4338ca' :
+                                ord.status === 'Delivered' ? '#047857' : '#b91c1c',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              padding: '0.25rem 0.65rem',
+                              borderRadius: '4px'
+                            }}>
+                              {ord.status}
+                            </span>
+                            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>ID: <strong style={{ fontFamily: 'monospace' }}>{ord.orderNumber || ord.orderId}</strong></span>
+                          </div>
+                          
+                          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)' }}>{ord.shopName}</h3>
+                          
+                          <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                            <span>Placed: <strong>{ord.date}</strong></span>
+                            <span>•</span>
+                            <span>Payment: <strong>{ord.paymentMethod}</strong></span>
+                            <span>•</span>
+                            <span>Total Paid: <strong style={{ color: 'var(--primary)' }}>₹{ord.totalAmount}</strong></span>
+                          </div>
                         </div>
-                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700 }}>{ord.shopName}</h3>
-                        <div style={{ display: 'flex', gap: '1rem', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                          <span>Date: {ord.date}</span>
-                          <span>•</span>
-                          <span>Items count: {ord.itemsCount}</span>
-                          <span>•</span>
-                          <span>Paid: <strong>₹{ord.totalAmount}</strong></span>
+
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <Link href="/orders" className="btn btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.8rem', textDecoration: 'none', border: '1px solid var(--border)', borderRadius: '6px', color: 'var(--text-muted)', fontWeight: 600, display: 'inline-block' }}>
+                            📍 Track Order
+                          </Link>
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', gap: '0.75rem' }}>
-                        <button className="btn btn-secondary" style={{ padding: '0.55rem 1rem', fontSize: '0.8rem' }}>
-                          Track Order
-                        </button>
-                        <button className="btn btn-primary" style={{ padding: '0.55rem 1rem', fontSize: '0.8rem' }}>
-                          Reorder
-                        </button>
+                      {/* Products List Detail */}
+                      <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '0.75rem' }}>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>Items Ordered:</span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                          {ord.items.map((item: any) => (
+                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                              <span>🛒 {item.name} <strong style={{ color: 'var(--text-muted)' }}>x{item.quantity}</strong></span>
+                              <span style={{ fontWeight: 600 }}>₹{item.price * item.quantity}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   ))

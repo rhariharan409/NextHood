@@ -22,6 +22,7 @@ export interface OrderRecord {
   longitude: string;
   status: string;
   createdAt: string;
+  rejectReason?: string;
 }
 
 const ORDER_COLUMNS: (keyof OrderRecord)[] = [
@@ -43,7 +44,8 @@ const ORDER_COLUMNS: (keyof OrderRecord)[] = [
   'latitude',
   'longitude',
   'status',
-  'createdAt'
+  'createdAt',
+  'rejectReason'
 ];
 
 export async function POST(req: Request) {
@@ -84,48 +86,9 @@ export async function POST(req: Request) {
     const orderId = 'NH-' + Math.floor(100000 + Math.random() * 900000);
     const orderNumber = 'ORD-' + Math.floor(1000000 + Math.random() * 9000000);
 
-    // Run exclusive lock for inventory reduction
+    // Run exclusive lock for order placement
     const result = await inventoryMutex.runExclusive(sellerId, async () => {
-      // 1. Read products
-      const products = await readCsv<any>('products.csv', [
-        'id', 'shop_id', 'name', 'category', 'brand', 'sku', 'barcode', 'description', 'price',
-        'mrp', 'discount', 'gst', 'weight', 'dimensions', 'stock', 'min_stock_alert', 'supplier_name',
-        'tags', 'delivery_type', 'images', 'thumbnail_url', 'views', 'sold', 'revenue', 'rating',
-        'created_at', 'last_updated'
-      ]);
-
-      // Verify stock availability
-      for (const item of items) {
-        const prod = products.find(p => p.id === item.id);
-        if (!prod || (parseInt(prod.stock) || 0) < item.quantity) {
-          return { error: `Product "${item.name}" is out of stock.`, status: 409 };
-        }
-      }
-
-      // Deduct inventory, increase sold, update revenue
-      for (const item of items) {
-        const prodIdx = products.findIndex(p => p.id === item.id);
-        if (prodIdx !== -1) {
-          const currentStock = parseInt(products[prodIdx].stock) || 0;
-          products[prodIdx].stock = String(Math.max(0, currentStock - item.quantity));
-          
-          const currentSold = parseInt(products[prodIdx].sold) || 0;
-          products[prodIdx].sold = String(currentSold + item.quantity);
-          
-          const currentRevenue = parseFloat(products[prodIdx].revenue || '0');
-          products[prodIdx].revenue = String(currentRevenue + item.quantity * parseFloat(products[prodIdx].price || '0'));
-        }
-      }
-
-      // Save updated products csv
-      await writeCsv<any>('products.csv', [
-        'id', 'shop_id', 'name', 'category', 'brand', 'sku', 'barcode', 'description', 'price',
-        'mrp', 'discount', 'gst', 'weight', 'dimensions', 'stock', 'min_stock_alert', 'supplier_name',
-        'tags', 'delivery_type', 'images', 'thumbnail_url', 'views', 'sold', 'revenue', 'rating',
-        'created_at', 'last_updated'
-      ], products);
-
-      // 2. Create the order record in orders.csv
+      // Create the order record in orders.csv
       const newOrder: OrderRecord = {
         id: orderId,
         orderNumber: orderNumber,
@@ -145,7 +108,8 @@ export async function POST(req: Request) {
         latitude: String(latitude || '0'),
         longitude: String(longitude || '0'),
         status: 'Pending',
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        rejectReason: ''
       };
 
       await appendCsv<OrderRecord>('orders.csv', ORDER_COLUMNS, newOrder);
@@ -197,7 +161,8 @@ export async function GET(req: Request) {
       longitude: parseFloat(o.longitude || '0'),
       created_at: o.createdAt,
       status: o.status,
-      items: JSON.parse(o.items_json || '[]')
+      items: JSON.parse(o.items_json || '[]'),
+      rejectReason: o.rejectReason || ''
     }));
 
     return NextResponse.json({ success: true, orders: formatted });
@@ -209,7 +174,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { orderId, status } = await req.json();
+    const { orderId, status, rejectReason } = await req.json();
     if (!orderId || !status) {
       return NextResponse.json({ error: 'Order ID and Status are required' }, { status: 400 });
     }
@@ -220,7 +185,76 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
 
+    const oldStatus = orders[orderIdx].status;
+    if (oldStatus === status) {
+      return NextResponse.json({ success: true, message: 'Status already up to date' });
+    }
+
+    const sellerId = orders[orderIdx].sellerId;
+
+    // Use mutex to safely read/write products.csv
+    await inventoryMutex.runExclusive(sellerId, async () => {
+      // Parse order items
+      const orderItems = JSON.parse(orders[orderIdx].items_json || '[]');
+
+      // 1. If rejected or cancelled, restore reserved stock back to products.csv
+      if ((status === 'Rejected' || status === 'Cancelled') && (oldStatus !== 'Rejected' && oldStatus !== 'Cancelled')) {
+        const products = await readCsv<any>('products.csv', [
+          'id', 'shop_id', 'name', 'category', 'brand', 'sku', 'barcode', 'description', 'price',
+          'mrp', 'discount', 'gst', 'weight', 'dimensions', 'stock', 'min_stock_alert', 'supplier_name',
+          'tags', 'delivery_type', 'images', 'thumbnail_url', 'views', 'sold', 'revenue', 'rating',
+          'created_at', 'last_updated'
+        ]);
+
+        for (const item of orderItems) {
+          const prodIdx = products.findIndex(p => p.id === item.id);
+          if (prodIdx !== -1) {
+            const currentStock = parseInt(products[prodIdx].stock) || 0;
+            products[prodIdx].stock = String(currentStock + (item.quantity || 1));
+          }
+        }
+
+        await writeCsv<any>('products.csv', [
+          'id', 'shop_id', 'name', 'category', 'brand', 'sku', 'barcode', 'description', 'price',
+          'mrp', 'discount', 'gst', 'weight', 'dimensions', 'stock', 'min_stock_alert', 'supplier_name',
+          'tags', 'delivery_type', 'images', 'thumbnail_url', 'views', 'sold', 'revenue', 'rating',
+          'created_at', 'last_updated'
+        ], products);
+      }
+
+      // 2. If delivered, attribute sales sold and revenue in products.csv
+      if (status === 'Delivered' && oldStatus !== 'Delivered') {
+        const products = await readCsv<any>('products.csv', [
+          'id', 'shop_id', 'name', 'category', 'brand', 'sku', 'barcode', 'description', 'price',
+          'mrp', 'discount', 'gst', 'weight', 'dimensions', 'stock', 'min_stock_alert', 'supplier_name',
+          'tags', 'delivery_type', 'images', 'thumbnail_url', 'views', 'sold', 'revenue', 'rating',
+          'created_at', 'last_updated'
+        ]);
+
+        for (const item of orderItems) {
+          const prodIdx = products.findIndex(p => p.id === item.id);
+          if (prodIdx !== -1) {
+            const currentSold = parseInt(products[prodIdx].sold) || 0;
+            products[prodIdx].sold = String(currentSold + (item.quantity || 1));
+
+            const currentRevenue = parseFloat(products[prodIdx].revenue || '0');
+            products[prodIdx].revenue = String(currentRevenue + (item.quantity || 1) * parseFloat(products[prodIdx].price || '0'));
+          }
+        }
+
+        await writeCsv<any>('products.csv', [
+          'id', 'shop_id', 'name', 'category', 'brand', 'sku', 'barcode', 'description', 'price',
+          'mrp', 'discount', 'gst', 'weight', 'dimensions', 'stock', 'min_stock_alert', 'supplier_name',
+          'tags', 'delivery_type', 'images', 'thumbnail_url', 'views', 'sold', 'revenue', 'rating',
+          'created_at', 'last_updated'
+        ], products);
+      }
+    });
+
     orders[orderIdx].status = status;
+    if (rejectReason !== undefined) {
+      orders[orderIdx].rejectReason = rejectReason;
+    }
     await writeCsv<OrderRecord>('orders.csv', ORDER_COLUMNS, orders);
 
     return NextResponse.json({ success: true, message: 'Order status updated' });
