@@ -315,7 +315,7 @@ export default function AIAssistantPage() {
     <>
       <Header currentUser={{ name: user.name, role: 'Customer' }} onLogout={handleLogout} />
 
-      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '2.5rem 1.5rem', fontFamily: 'var(--font-family)' }}>
+      <main style={{ flex: 1, backgroundColor: 'var(--background)', padding: '2.5rem 1.5rem', fontFamily: 'var(--font-family)' }}>
         <div className="container" style={{ maxWidth: '1100px', display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           
           {/* Left Column: Chat Conversation Interface */}
@@ -325,14 +325,14 @@ export default function AIAssistantPage() {
             display: 'flex',
             flexDirection: 'column',
             height: '620px',
-            backgroundColor: '#ffffff',
+            backgroundColor: 'var(--surface)',
             borderRadius: '24px',
-            border: '1px solid rgba(226, 232, 240, 0.8)',
-            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.02)',
+            border: '1px solid var(--border)',
+            boxShadow: 'var(--shadow)',
             overflow: 'hidden'
           }}>
             {/* Header */}
-            <div style={{ padding: '1.25rem 2rem', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: 'rgba(16, 185, 129, 0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ padding: '1.25rem 2rem', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--nav-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
                   <MessageSquare size={18} className="text-primary" /> AI Assistant Agent
@@ -361,13 +361,13 @@ export default function AIAssistantPage() {
                     >
                       <div style={{
                         maxWidth: '80%',
-                        backgroundColor: isUser ? 'var(--primary)' : '#f8fafc',
+                        backgroundColor: isUser ? 'var(--primary)' : 'var(--surface-2)',
                         color: isUser ? '#ffffff' : 'var(--foreground)',
                         padding: '0.85rem 1.15rem',
                         borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
                         fontSize: '0.9rem',
                         lineHeight: '1.5',
-                        border: isUser ? 'none' : '1px solid rgba(226, 232, 240, 0.6)',
+                        border: isUser ? 'none' : '1px solid var(--border)',
                         boxShadow: '0 2px 8px rgba(0,0,0,0.01)',
                         whiteSpace: 'pre-wrap'
                       }}>
@@ -411,10 +411,10 @@ export default function AIAssistantPage() {
               {thinking && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: 'var(--surface-2)',
                     padding: '0.75rem 1.25rem',
                     borderRadius: '16px 16px 16px 2px',
-                    border: '1px solid rgba(226,232,240,0.6)',
+                    border: '1px solid var(--border)',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.25rem'
@@ -430,7 +430,7 @@ export default function AIAssistantPage() {
             </div>
 
             {/* Chat Input panel */}
-            <div style={{ padding: '1rem 2rem', borderTop: '1px solid rgba(226, 232, 240, 0.8)', display: 'flex', gap: '0.5rem', alignItems: 'center', backgroundColor: '#fafbfb' }}>
+            <div style={{ padding: '1rem 2rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.5rem', alignItems: 'center', backgroundColor: 'var(--nav-bg)' }}>
               <input
                 type="text"
                 className="form-input"
@@ -438,7 +438,7 @@ export default function AIAssistantPage() {
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                style={{ flex: 1, border: '1px solid var(--border)', borderRadius: '12px', backgroundColor: '#ffffff' }}
+                style={{ flex: 1, border: '1px solid var(--border)', borderRadius: '12px', backgroundColor: 'var(--input-bg)' }}
                 disabled={thinking}
               />
               

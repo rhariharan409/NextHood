@@ -555,3 +555,35 @@ tr:hover {
 [data-theme='dark'] .skeleton-button {
   border-radius: 16px !important;
 }
+
+/* Leaflet Map Dark Theme Overrides */
+[data-theme='dark'] .leaflet-container {
+  background-color: #0b1120 !important;
+}
+
+[data-theme='dark'] .leaflet-popup-content-wrapper {
+  background-color: rgba(17, 24, 39, 0.9) !important;
+  color: #f8fafc !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  border-radius: 14px !important;
+}
+
+[data-theme='dark'] .leaflet-popup-tip {
+  background-color: rgba(17, 24, 39, 0.9) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-theme='dark'] .custom-active-shop-marker > div {
+  background-color: #111827 !important;
+  border-color: #10b981 !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='dark'] .custom-static-shop-marker > div {
+  background-color: #111827 !important;
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  color: #94a3b8 !important;
+}
+

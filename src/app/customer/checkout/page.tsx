@@ -445,8 +445,8 @@ export default function CheckoutPage() {
 
           {reservationError && (
             <div style={{
-              backgroundColor: '#fef2f2',
-              border: '1px solid #fee2e2',
+              backgroundColor: 'rgba(239, 68, 68, 0.08)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
               padding: '1.5rem',
               borderRadius: '20px',
               color: '#ef4444',
@@ -454,7 +454,7 @@ export default function CheckoutPage() {
               flexDirection: 'column',
               gap: '1rem'
             }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{reservationError}</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ef4444' }}>{reservationError}</span>
               <button
                 onClick={handleBackLink}
                 className="btn btn-primary"
