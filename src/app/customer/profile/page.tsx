@@ -339,77 +339,7 @@ export default function ProfileDashboardPage() {
 
   return (
     <>
-      <Header />
-
-      {/* Sticky Top Navigation */}
-      <header className="header" style={{ flexShrink: 0, position: 'sticky', top: 0, width: '100%', zIndex: 100 }}>
-        <div className="container header-container">
-          <Link href="/" className="logo-group">
-            <div className="logo-icon">N</div>
-            <span>Nexthood</span>
-          </Link>
-
-          <nav style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-            <Link href="/customer/home" style={{
-              fontWeight: pathname === '/customer/home' ? 600 : 500,
-              color: pathname === '/customer/home' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Home
-            </Link>
-            <Link href="/customer/smart-search" style={{
-              fontWeight: pathname === '/customer/smart-search' ? 600 : 500,
-              color: pathname === '/customer/smart-search' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              🔍 Smart Search
-            </Link>
-            <Link href="/customer/ai-assistant" style={{
-              fontWeight: pathname === '/customer/ai-assistant' ? 600 : 500,
-              color: pathname === '/customer/ai-assistant' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              🤖 AI Assistant
-            </Link>
-            <Link href="/customer/flashfest" style={{
-              fontWeight: pathname === '/customer/flashfest' ? 600 : 500,
-              color: pathname === '/customer/flashfest' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              FlashFest
-            </Link>
-            <Link href="/customer/checkout" style={{
-              fontWeight: 500,
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Cart {cartCount > 0 && `(${cartCount})`}
-            </Link>
-            <Link href="/customer/profile" style={{
-              fontWeight: pathname === '/customer/profile' ? 600 : 500,
-              color: pathname === '/customer/profile' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Profile
-            </Link>
-          </nav>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Hello, <strong>{user.name}</strong>
-            </span>
-            <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header currentUser={{ name: user.name, role: 'Customer' }} onLogout={handleLogout} />
 
       <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 2rem' }}>
         <div className="container" style={{ maxWidth: '1100px', display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>

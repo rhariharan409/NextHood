@@ -115,11 +115,6 @@ export async function POST(req: Request) {
       await appendCsv<OrderRecord>('orders.csv', ORDER_COLUMNS, newOrder);
       return { success: true, order: newOrder };
     });
-
-    if (result.error) {
-      return NextResponse.json({ error: result.error }, { status: result.status });
-    }
-
     return NextResponse.json({ success: true, order: result.order });
   } catch (error: any) {
     console.error('[ORDER ROUTE POST ERROR]', error);

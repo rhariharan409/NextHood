@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Link from 'next/link';
@@ -36,7 +36,7 @@ interface Order {
   rejectReason?: string;
 }
 
-export default function CustomerOrdersPage() {
+function CustomerOrdersContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const showSuccess = searchParams.get('success') === 'true';
@@ -378,5 +378,17 @@ export default function CustomerOrdersPage() {
         }
       `}</style>
     </>
+  );
+}
+
+export default function CustomerOrdersPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', fontFamily: 'var(--font-family)' }}>
+        Loading live orders tracking...
+      </div>
+    }>
+      <CustomerOrdersContent />
+    </Suspense>
   );
 }

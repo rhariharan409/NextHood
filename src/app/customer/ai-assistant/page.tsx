@@ -1,10 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useCart, Product } from '@/context/CartContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Sparkles, MessageSquare, Mic, Send, Plus, Trash2, CheckCircle2, ShieldAlert } from 'lucide-react';
 
 interface User {
   id: string;
@@ -43,7 +45,6 @@ interface Message {
 
 export default function AIAssistantPage() {
   const router = useRouter();
-  const pathname = usePathname();
   const { addToCart, clearCart } = useCart();
 
   // Auth & GPS
@@ -198,14 +199,14 @@ export default function AIAssistantPage() {
         setActiveProposal(null);
         setProposalSavings(null);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
       setMessages((prev) => [
         ...prev,
         {
           id: String(Date.now()),
           sender: 'ai',
-          text: 'Oops, I encountered a temporary connection issue. Please try again.'
+          text: '⚠️ I encountered an issue querying the catalog. Please try a different query or make sure you are nearby active shops.'
         }
       ]);
     } finally {
@@ -215,63 +216,62 @@ export default function AIAssistantPage() {
 
   const handleSendMessage = () => {
     if (!inputVal.trim()) return;
-    const userText = inputVal;
+    const text = inputVal;
     setInputVal('');
 
     setMessages((prev) => [
       ...prev,
-      { id: String(Date.now()), sender: 'user', text: userText }
+      { id: String(Date.now()), sender: 'user', text }
     ]);
 
-    processUserGoal(userText);
+    processUserGoal(text);
   };
 
-  // Proposal Edit Handlers
-  const handleUpdateQuantity = (productId: string, val: number) => {
+  // Proposal List Editors
+  const handleRemoveItem = (id: string) => {
     if (!activeProposal) return;
-    const next = activeProposal.map((item) => {
-      if (item.id === productId) {
-        const nextQty = Math.max(1, item.quantity + val);
+    const updated = activeProposal.filter((item) => item.id !== id);
+    setActiveProposal(updated.length > 0 ? updated : null);
+    
+    // update savings metrics
+    if (proposalSavings) {
+      const removed = activeProposal.find((item) => item.id === id);
+      if (removed) {
+        setProposalSavings({
+          ...proposalSavings,
+          totalCost: proposalSavings.totalCost - (removed.price * removed.quantity)
+        });
+      }
+    }
+  };
+
+  const handleUpdateQuantity = (id: string, delta: number) => {
+    if (!activeProposal) return;
+    const updated = activeProposal.map((item) => {
+      if (item.id === id) {
+        const nextQty = Math.max(1, Math.min(item.stock, item.quantity + delta));
+        
+        // update savings summary
+        if (proposalSavings && nextQty !== item.quantity) {
+          setProposalSavings({
+            ...proposalSavings,
+            totalCost: proposalSavings.totalCost + (item.price * delta)
+          });
+        }
         return { ...item, quantity: nextQty };
       }
       return item;
     });
-    setActiveProposal(next);
-    recalculateSavings(next);
+    setActiveProposal(updated);
   };
 
-  const handleRemoveItem = (productId: string) => {
-    if (!activeProposal) return;
-    const next = activeProposal.filter((item) => item.id !== productId);
-    setActiveProposal(next.length > 0 ? next : null);
-    recalculateSavings(next);
-  };
-
-  const recalculateSavings = (list: SelectedItem[]) => {
-    if (list.length === 0) {
-      setProposalSavings(null);
-      return;
-    }
-    const totalCost = list.reduce((acc, i) => acc + (i.price * i.quantity), 0);
-    const savings = Math.round(totalCost * 0.12);
-    const storesCount = new Set(list.map(i => i.shopId)).size;
-    setProposalSavings({
-      totalCost,
-      savings,
-      storesCount,
-      deliveryTime: storesCount * 12,
-      reason: 'Recalculated based on your active modifications.'
-    });
-  };
-
+  // Add all approved proposal items to customer context cart
   const handleConfirmOrder = () => {
-    if (!activeProposal || activeProposal.length === 0) return;
-    
-    // Clear cart first to prevent single-merchant constraint violations
+    if (!activeProposal) return;
     clearCart();
-
-    // Add each approved item into cart context
+    
     activeProposal.forEach((item) => {
+      // Compatibility mapping
       const prod: Product = {
         id: item.id,
         name: item.name,
@@ -280,7 +280,6 @@ export default function AIAssistantPage() {
         image: item.image,
         category: item.category
       };
-
       const shop = {
         id: item.shopId,
         name: item.shopName,
@@ -289,160 +288,138 @@ export default function AIAssistantPage() {
         lon: 0
       };
 
-      addToCart(prod, shop);
+      // Add with quantity
+      for (let i = 0; i < item.quantity; i++) {
+        addToCart(prod, shop);
+      }
     });
 
-    // Redirect to Checkout page
     router.push('/customer/checkout');
   };
 
+  if (loading) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
+        <Header />
+        <div className="container" style={{ maxWidth: '1100px', padding: '3rem 2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="shimmer skeleton-title" style={{ height: '40px', width: '60%' }}></div>
+          <div className="shimmer skeleton-image" style={{ height: '400px' }}></div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
     <>
-      <Header />
-      
-      {/* Sticky Top Navigation */}
-      <header className="header" style={{ flexShrink: 0, position: 'sticky', top: 0, width: '100%', zIndex: 100 }}>
-        <div className="container header-container">
-          <Link href="/" className="logo-group">
-            <div className="logo-icon">N</div>
-            <span>Nexthood</span>
-          </Link>
+      <Header currentUser={{ name: user.name, role: 'Customer' }} onLogout={handleLogout} />
 
-          <nav style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-            <Link href="/customer/home" style={{
-              fontWeight: pathname === '/customer/home' ? 600 : 500,
-              color: pathname === '/customer/home' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Home
-            </Link>
-            <Link href="/customer/smart-search" style={{
-              fontWeight: pathname === '/customer/smart-search' ? 600 : 500,
-              color: pathname === '/customer/smart-search' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              🔍 Smart Search
-            </Link>
-            <Link href="/customer/ai-assistant" style={{
-              fontWeight: pathname === '/customer/ai-assistant' ? 600 : 500,
-              color: pathname === '/customer/ai-assistant' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              🤖 AI Assistant
-            </Link>
-            <Link href="/customer/flashfest" style={{
-              fontWeight: pathname === '/customer/flashfest' ? 600 : 500,
-              color: pathname === '/customer/flashfest' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              FlashFest
-            </Link>
-            <Link href="/customer/checkout" style={{
-              fontWeight: 500,
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Cart
-            </Link>
-            <Link href="/customer/profile" style={{
-              fontWeight: pathname === '/customer/profile' ? 600 : 500,
-              color: pathname === '/customer/profile' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Profile
-            </Link>
-          </nav>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Hello, <strong>{user?.name}</strong>
-            </span>
-            <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 2rem' }}>
-        <div className="container" style={{ maxWidth: '1100px', display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '2.5rem 1.5rem', fontFamily: 'var(--font-family)' }}>
+        <div className="container" style={{ maxWidth: '1100px', display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
           
           {/* Left Column: Chat Conversation Interface */}
-          <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', height: '650px', backgroundColor: '#ffffff', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', overflow: 'hidden' }}>
-            
-            <div style={{ padding: '1.25rem 2rem', borderBottom: '1px solid var(--border)', backgroundColor: 'rgba(16, 185, 129, 0.02)' }}>
-              <h2 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span>🤖</span> AI Shopping Assistant
-              </h2>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>LLM-Powered Store Allocation & Pricing Engine</span>
+          <div style={{
+            flex: 1,
+            minWidth: '320px',
+            display: 'flex',
+            flexDirection: 'column',
+            height: '620px',
+            backgroundColor: '#ffffff',
+            borderRadius: '24px',
+            border: '1px solid rgba(226, 232, 240, 0.8)',
+            boxShadow: '0 10px 40px rgba(0, 0, 0, 0.02)',
+            overflow: 'hidden'
+          }}>
+            {/* Header */}
+            <div style={{ padding: '1.25rem 2rem', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: 'rgba(16, 185, 129, 0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h2 style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--foreground)', display: 'flex', alignItems: 'center', gap: '0.4rem', margin: 0 }}>
+                  <MessageSquare size={18} className="text-primary" /> AI Assistant Agent
+                </h2>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Multi-store allocation & price optimization</span>
+              </div>
+              <span style={{ fontSize: '0.7rem', fontWeight: 700, backgroundColor: 'rgba(16,185,129,0.08)', color: 'var(--primary)', padding: '2px 8px', borderRadius: '20px' }}>
+                Online
+              </span>
             </div>
 
             {/* Chat Body */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {messages.map((m) => (
-                <div key={m.id} style={{
-                  display: 'flex',
-                  justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start'
-                }}>
-                  <div style={{
-                    maxWidth: '85%',
-                    backgroundColor: m.sender === 'user' ? 'var(--primary)' : 'var(--secondary)',
-                    color: m.sender === 'user' ? '#ffffff' : 'var(--foreground)',
-                    padding: '1rem 1.25rem',
-                    borderRadius: 'var(--radius-md)',
-                    fontSize: '0.95rem',
-                    lineHeight: '1.5',
-                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)',
-                    whiteSpace: 'pre-wrap'
-                  }}>
-                    {m.text}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }} className="no-scrollbar">
+              <AnimatePresence>
+                {messages.map((m) => {
+                  const isUser = m.sender === 'user';
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      key={m.id}
+                      style={{
+                        display: 'flex',
+                        justifyContent: isUser ? 'flex-end' : 'flex-start'
+                      }}
+                    >
+                      <div style={{
+                        maxWidth: '80%',
+                        backgroundColor: isUser ? 'var(--primary)' : '#f8fafc',
+                        color: isUser ? '#ffffff' : 'var(--foreground)',
+                        padding: '0.85rem 1.15rem',
+                        borderRadius: isUser ? '16px 16px 2px 16px' : '16px 16px 16px 2px',
+                        fontSize: '0.9rem',
+                        lineHeight: '1.5',
+                        border: isUser ? 'none' : '1px solid rgba(226, 232, 240, 0.6)',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.01)',
+                        whiteSpace: 'pre-wrap'
+                      }}>
+                        {m.text}
 
-                    {/* Clarification prompt clickables */}
-                    {m.followUpType === 'biryani_clarify' && (
-                      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => {
-                            setInputVal('Chicken biryani for 6 people (clarified)');
-                            processUserGoal('Chicken biryani for 6 people (clarified)');
-                          }}
-                          className="btn btn-primary"
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem' }}
-                        >
-                          Chicken Biryani (6 people)
-                        </button>
-                        <button
-                          onClick={() => {
-                            setInputVal('Veg biryani for 4 people (clarified)');
-                            processUserGoal('Veg biryani for 4 people (clarified)');
-                          }}
-                          className="btn btn-secondary"
-                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.8rem', borderColor: 'var(--primary)', color: 'var(--primary)' }}
-                        >
-                          Veg Biryani (4 people)
-                        </button>
+                        {/* Clarification prompt clickables */}
+                        {m.followUpType === 'biryani_clarify' && (
+                          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem', flexWrap: 'wrap' }}>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                setInputVal('Chicken biryani for 6 people (clarified)');
+                                processUserGoal('Chicken biryani for 6 people (clarified)');
+                              }}
+                              className="btn btn-primary"
+                              style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: '8px' }}
+                            >
+                              Chicken Biryani (6 people)
+                            </motion.button>
+                            <motion.button
+                              whileHover={{ scale: 1.02 }}
+                              whileTap={{ scale: 0.98 }}
+                              onClick={() => {
+                                setInputVal('Veg biryani for 4 people (clarified)');
+                                processUserGoal('Veg biryani for 4 people (clarified)');
+                              }}
+                              className="btn btn-secondary"
+                              style={{ padding: '0.4rem 0.85rem', fontSize: '0.75rem', borderRadius: '8px', borderColor: 'var(--primary)', color: 'var(--primary)' }}
+                            >
+                              Veg Biryani (4 people)
+                            </motion.button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                    </motion.div>
+                  );
+                })}
+              </AnimatePresence>
 
               {thinking && (
                 <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
                   <div style={{
-                    backgroundColor: 'var(--secondary)',
-                    padding: '1rem 1.5rem',
-                    borderRadius: 'var(--radius-md)',
+                    backgroundColor: '#f8fafc',
+                    padding: '0.75rem 1.25rem',
+                    borderRadius: '16px 16px 16px 2px',
+                    border: '1px solid rgba(226,232,240,0.6)',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.35rem'
+                    gap: '0.25rem'
                   }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Thinking</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Thinking</span>
                     <span className="dot" style={{ animationDelay: '0s' }}>.</span>
                     <span className="dot" style={{ animationDelay: '0.2s' }}>.</span>
                     <span className="dot" style={{ animationDelay: '0.4s' }}>.</span>
@@ -453,158 +430,177 @@ export default function AIAssistantPage() {
             </div>
 
             {/* Chat Input panel */}
-            <div style={{ padding: '1.25rem 2rem', borderTop: '1px solid var(--border)', display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <div style={{ padding: '1rem 2rem', borderTop: '1px solid rgba(226, 232, 240, 0.8)', display: 'flex', gap: '0.5rem', alignItems: 'center', backgroundColor: '#fafbfb' }}>
               <input
                 type="text"
                 className="form-input"
-                placeholder="Describe your shopping goal..."
+                placeholder="Ask e.g. 'I want to bake a chocolate cake'..."
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-                style={{ flex: 1, border: '1.5px solid var(--border)' }}
+                style={{ flex: 1, border: '1px solid var(--border)', borderRadius: '12px', backgroundColor: '#ffffff' }}
                 disabled={thinking}
               />
               
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleVoiceInputSimulate}
                 disabled={thinking || listening}
                 style={{
-                  width: '42px',
-                  height: '42px',
+                  width: '38px',
+                  height: '38px',
                   borderRadius: '50%',
-                  backgroundColor: listening ? '#fee2e2' : 'var(--secondary)',
-                  border: `1.5px solid ${listening ? '#fca5a5' : 'var(--border)'}`,
+                  backgroundColor: listening ? '#fee2e2' : '#ffffff',
+                  border: `1.5px solid ${listening ? '#fca5a5' : 'rgba(226, 232, 240, 0.8)'}`,
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  fontSize: '1.1rem',
+                  color: listening ? '#ef4444' : 'var(--text-muted)',
                   animation: listening ? 'hurry-pulse 1s infinite' : 'none'
                 }}
-                title="Simulate Voice Input"
+                title="Voice simulation"
               >
-                🎙️
-              </button>
+                <Mic size={14} />
+              </motion.button>
 
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={handleSendMessage}
-                className="btn btn-primary"
-                style={{ padding: '0 1.5rem', height: '42px' }}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  backgroundColor: 'var(--primary)',
+                  border: 'none',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
                 disabled={thinking || !inputVal.trim()}
               >
-                Send
-              </button>
+                <Send size={14} />
+              </motion.button>
             </div>
-
           </div>
 
           {/* Right Column: AI recommendation and Confirmation List */}
-          {activeProposal && (
-            <div style={{ width: '420px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              
-              {/* Proposal Summary Metrics */}
-              {proposalSavings && (
-                <div className="card" style={{ backgroundColor: '#ffffff', border: '1.5px solid var(--primary)', padding: '1.75rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', display: 'block', marginBottom: '0.5rem' }}>
-                    🏆 AI recommendation Plan
-                  </span>
-                  
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Total Cost</span>
-                      <strong style={{ fontSize: '1.15rem' }}>₹{proposalSavings.totalCost}</strong>
-                    </div>
-                    <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.04)', padding: '0.75rem', borderRadius: 'var(--radius-sm)', border: '1px solid rgba(16,185,129,0.1)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--primary)', display: 'block' }}>Estimated Savings</span>
-                      <strong style={{ fontSize: '1.15rem', color: '#065f46' }}>₹{proposalSavings.savings}</strong>
-                    </div>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Stores Used</span>
-                      <strong style={{ fontSize: '1.15rem' }}>{proposalSavings.storesCount} stores</strong>
-                    </div>
-                    <div style={{ backgroundColor: '#f8fafc', padding: '0.75rem', borderRadius: 'var(--radius-sm)' }}>
-                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Est. Delivery</span>
-                      <strong style={{ fontSize: '1.15rem' }}>{proposalSavings.deliveryTime} mins</strong>
-                    </div>
-                  </div>
-
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                    💡 {proposalSavings.reason}
-                  </p>
-                </div>
-              )}
-
-              {/* Proposal items list editor */}
-              <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid var(--border)' }}>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.25rem' }}>
-                  Review Shopping List
-                </h3>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginBottom: '2rem', maxHeight: '280px', overflowY: 'auto' }}>
-                  {activeProposal.map((item) => (
-                    <div key={item.id} style={{ display: 'flex', gap: '0.75rem', position: 'relative' }}>
-                      
-                      <button
-                        onClick={() => handleRemoveItem(item.id)}
-                        style={{ position: 'absolute', top: 0, right: 0, border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.9rem', color: '#cbd5e1' }}
-                        title="Remove item"
-                      >
-                        ✕
-                      </button>
-
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)' }}
-                      />
-
-                      <div style={{ flex: 1 }}>
-                        <strong style={{ fontSize: '0.85rem', display: 'block', color: 'var(--foreground)' }}>{item.name}</strong>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>
-                          Store: {item.shopName}
-                        </span>
-                        
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>₹{item.price * item.quantity}</span>
-                          
-                          {/* Quantity control */}
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <button
-                              onClick={() => handleUpdateQuantity(item.id, -1)}
-                              style={{ width: '22px', height: '22px', border: '1px solid var(--border)', borderRadius: '3px', backgroundColor: '#ffffff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              -
-                            </button>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>{item.quantity}</span>
-                            <button
-                              onClick={() => handleUpdateQuantity(item.id, 1)}
-                              style={{ width: '22px', height: '22px', border: '1px solid var(--border)', borderRadius: '3px', backgroundColor: '#ffffff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            >
-                              +
-                            </button>
-                          </div>
-                        </div>
-
-                        <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontStyle: 'italic', display: 'block', marginTop: '0.25rem' }}>
-                          Reason: {item.reason}
-                        </span>
-
+          <AnimatePresence>
+            {activeProposal && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                style={{ width: '420px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+              >
+                {/* Proposal Summary Metrics */}
+                {proposalSavings && (
+                  <div className="glass-card" style={{ padding: '1.5rem', border: '1.5px solid var(--primary)', backgroundColor: 'rgba(16, 185, 129, 0.02)' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.75rem' }}>
+                      <Sparkles size={12} /> AI Optimizations Generated
+                    </span>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+                      <div style={{ backgroundColor: '#ffffff', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.6)' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>Total Budget</span>
+                        <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>₹{proposalSavings.totalCost}</strong>
+                      </div>
+                      <div style={{ backgroundColor: '#ecfdf5', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.15)' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--primary)', display: 'block' }}>Net Savings</span>
+                        <strong style={{ fontSize: '1.1rem', color: '#065f46' }}>₹{proposalSavings.savings}</strong>
+                      </div>
+                      <div style={{ backgroundColor: '#ffffff', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.6)' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>Merchants Dispatched</span>
+                        <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>{proposalSavings.storesCount} shops</strong>
+                      </div>
+                      <div style={{ backgroundColor: '#ffffff', padding: '0.75rem', borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.6)' }}>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block' }}>Est. Delivery</span>
+                        <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>{proposalSavings.deliveryTime} mins</strong>
                       </div>
                     </div>
-                  ))}
+
+                    <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.4', margin: 0 }}>
+                      💡 {proposalSavings.reason}
+                    </p>
+                  </div>
+                )}
+
+                {/* Proposal items list editor */}
+                <div className="glass-card" style={{ padding: '1.5rem', backgroundColor: '#ffffff' }}>
+                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--foreground)' }}>
+                    Review Sourced Groceries
+                  </h3>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', maxHeight: '280px', overflowY: 'auto' }} className="no-scrollbar">
+                    {activeProposal.map((item) => (
+                      <div key={item.id} style={{ display: 'flex', gap: '0.75rem', position: 'relative', borderBottom: '1px solid rgba(226, 232, 240, 0.6)', paddingBottom: '0.75rem' }}>
+                        
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          style={{ position: 'absolute', top: 0, right: 0, border: 'none', background: 'none', cursor: 'pointer', color: '#ef4444' }}
+                          title="Remove item"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(226,232,240,0.6)' }}
+                        />
+
+                        <div style={{ flex: 1 }}>
+                          <strong style={{ fontSize: '0.8rem', display: 'block', color: 'var(--foreground)' }}>{item.name}</strong>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block', marginTop: '1px' }}>
+                            Shop: {item.shopName}
+                          </span>
+                          
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem' }}>
+                            <strong style={{ fontSize: '0.85rem' }}>₹{item.price * item.quantity}</strong>
+                            
+                            {/* Quantity control */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', backgroundColor: '#f1f5f9', padding: '2px 6px', borderRadius: '6px' }}>
+                              <button
+                                onClick={() => handleUpdateQuantity(item.id, -1)}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                              >
+                                -
+                              </button>
+                              <span style={{ fontSize: '0.75rem', fontWeight: 700 }}>{item.quantity}</span>
+                              <button
+                                onClick={() => handleUpdateQuantity(item.id, 1)}
+                                style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                              >
+                                +
+                              </button>
+                            </div>
+                          </div>
+
+                          <span style={{ fontSize: '0.7rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.2rem', marginTop: '0.25rem' }}>
+                            <CheckCircle2 size={10} /> {item.reason}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleConfirmOrder}
+                    className="btn btn-primary"
+                    style={{ width: '100%', padding: '0.75rem 0', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', boxShadow: '0 4px 12px rgba(16,185,129,0.2)' }}
+                  >
+                    Confirm Proposal & Checkout
+                  </motion.button>
                 </div>
-
-                <button
-                  onClick={handleConfirmOrder}
-                  className="btn btn-primary"
-                  style={{ width: '100%', padding: '0.85rem 0', boxShadow: '0 10px 20px rgba(16,185,129,0.15)' }}
-                >
-                  Approve Plan & Checkout
-                </button>
-              </div>
-
-            </div>
-          )}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
         </div>
       </main>
@@ -625,9 +621,12 @@ export default function AIAssistantPage() {
           50% { transform: scale(1.05); }
           100% { transform: scale(1); }
         }
-        @keyframes slide-in {
-          from { transform: translateX(100%); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
         }
       `}</style>
     </>

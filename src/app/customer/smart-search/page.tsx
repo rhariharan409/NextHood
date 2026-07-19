@@ -1,10 +1,13 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import OptimizedImage from '@/components/OptimizedImage';
+import { useCart } from '@/context/CartContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Sparkles, Filter, Store, Star, MapPin, Clock, ArrowUpDown, ShoppingBag } from 'lucide-react';
 
 interface User {
   id: string;
@@ -29,7 +32,6 @@ interface ProductComparison {
   aiBadge: string;
 }
 
-// Reusable mock products generator mapping category to products
 function getShopProducts(category: string, shopId: string) {
   const cat = category.toLowerCase();
   
@@ -69,7 +71,7 @@ function getShopProducts(category: string, shopId: string) {
 
 export default function SmartSearchPage() {
   const router = useRouter();
-  const pathname = usePathname();
+  const { addToCart, cartCount } = useCart();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -194,223 +196,176 @@ export default function SmartSearchPage() {
             distance: shop.distance,
             deliveryTime,
             stock,
-            aiBadge: '' // populated next
+            aiBadge: ''
           });
         }
       }
 
-      // Calculate AI Recommendation Badges
+      // 3. Simple Mock LLM scoring logic for recommendation engine (AI Badge assignment)
       if (list.length > 0) {
-        const sortedPrice = [...list].sort((a, b) => a.price - b.price);
-        const sortedDistance = [...list].sort((a, b) => a.distance - b.distance);
-        const sortedRating = [...list].sort((a, b) => b.shopRating - a.shopRating);
+        // Find best price
+        let minPrice = Math.min(...list.map((l) => l.price));
+        // Find closest
+        let minDistance = Math.min(...list.map((l) => l.distance));
+        // Find best rating
+        let maxRating = Math.max(...list.map((l) => l.shopRating));
 
         list.forEach((item) => {
-          if (item.id === sortedPrice[0].id) {
-            item.aiBadge = 'Cheapest';
-          } else if (item.id === sortedDistance[0].id) {
-            item.aiBadge = 'Fastest Delivery';
-          } else if (item.id === sortedRating[0].id) {
-            item.aiBadge = 'Top Rated';
-          } else {
-            item.aiBadge = 'Best Value';
+          if (item.price === minPrice && item.distance === minDistance) {
+            item.aiBadge = '🌟 Best Match (Cheapest & Nearest)';
+          } else if (item.price === minPrice) {
+            item.aiBadge = '💰 Cheapest Option';
+          } else if (item.distance === minDistance) {
+            item.aiBadge = '⚡ Nearest Delivery';
+          } else if (item.shopRating === maxRating) {
+            item.aiBadge = '⭐ Top Rated Shop';
           }
         });
       }
 
       setComparisonResults(list);
-    } catch (e) {
-      console.error('Smart Search logic failed:', e);
+    } catch (err) {
+      console.error(err);
     } finally {
       setSearching(false);
     }
   };
 
-  // Sorting Handler
-  const getSortedResults = () => {
-    const list = [...comparisonResults];
-    switch (sortBy) {
-      case 'price_asc':
-        return list.sort((a, b) => a.price - b.price);
-      case 'rating_desc':
-        return list.sort((a, b) => b.shopRating - a.shopRating);
-      case 'distance_asc':
-        return list.sort((a, b) => a.distance - b.distance);
-      case 'delivery_asc':
-        // Sort delivery times deterministically by distance
-        return list.sort((a, b) => a.distance - b.distance);
-      case 'discount_desc':
-        return list.sort((a, b) => b.price - a.price); // fallback
-      case 'ai':
-      default:
-        // Best Combination: balance price, rating, and distance
-        return list.sort((a, b) => {
-          const scoreA = (a.shopRating * 10) - (a.price / 50) - (a.distance / 1000);
-          const scoreB = (b.shopRating * 10) - (b.price / 50) - (b.distance / 1000);
-          return scoreB - scoreA;
-        });
-    }
+  // Add Item wrapper
+  const handleAddItem = (item: ProductComparison) => {
+    // resolve schema compatibility
+    const prod: any = {
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      description: item.description,
+      image: item.image,
+      category: item.category
+    };
+    const shop = {
+      id: item.shopId,
+      name: item.shopName,
+      category: item.category,
+      lat: 0,
+      lon: 0
+    };
+    addToCart(prod, shop);
   };
 
-  if (loading || locationLoading) {
+  // Sorted list resolver
+  const sortedList = useMemo(() => {
+    const listCopy = [...comparisonResults];
+    switch (sortBy) {
+      case 'price_asc':
+        return listCopy.sort((a, b) => a.price - b.price);
+      case 'rating_desc':
+        return listCopy.sort((a, b) => b.shopRating - a.shopRating);
+      case 'distance_asc':
+        return listCopy.sort((a, b) => a.distance - b.distance);
+      case 'delivery_asc':
+        return listCopy.sort((a, b) => {
+          const aMins = parseInt(a.deliveryTime) || 15;
+          const bMins = parseInt(b.deliveryTime) || 15;
+          return aMins - bMins;
+        });
+      case 'ai':
+      default:
+        // Prioritize items with AI Badges first
+        return listCopy.sort((a, b) => {
+          if (a.aiBadge && !b.aiBadge) return -1;
+          if (!a.aiBadge && b.aiBadge) return 1;
+          return a.price - b.price; // secondary sort cheapest
+        });
+    }
+  }, [comparisonResults, sortBy]);
+
+  const hasResults = comparisonResults.length > 0;
+
+  if (loading) {
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'var(--font-family)',
-        color: 'var(--text-muted)'
-      }}>
-        Initializing Smart Search comparison engine...
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
+        <Header />
+        <div className="container" style={{ maxWidth: '1100px', padding: '3rem 2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="shimmer skeleton-title" style={{ height: '40px', width: '55%' }}></div>
+          <div className="shimmer skeleton-image" style={{ height: '100px' }}></div>
+        </div>
       </div>
     );
   }
 
-  const sortedResults = getSortedResults();
-
-  // Savings computation
-  const hasResults = comparisonResults.length > 0;
-  const lowestPrice = hasResults ? Math.min(...comparisonResults.map(p => p.price)) : 0;
-  const highestPrice = hasResults ? Math.max(...comparisonResults.map(p => p.price)) : 0;
-  const amountSaved = highestPrice - lowestPrice;
+  if (!user) return null;
 
   return (
     <>
-      <Header />
-      
-      {/* Sticky Top Navigation */}
-      <header className="header" style={{ flexShrink: 0, position: 'sticky', top: 0, width: '100%', zIndex: 100 }}>
-        <div className="container header-container">
-          <Link href="/" className="logo-group">
-            <div className="logo-icon">N</div>
-            <span>Nexthood</span>
-          </Link>
+      <Header currentUser={{ name: user.name, role: 'Customer' }} onLogout={handleLogout} />
 
-          <nav style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
-            <Link href="/customer/home" style={{
-              fontWeight: pathname === '/customer/home' ? 600 : 500,
-              color: pathname === '/customer/home' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Home
-            </Link>
-            <Link href="/customer/smart-search" style={{
-              fontWeight: pathname === '/customer/smart-search' ? 600 : 500,
-              color: pathname === '/customer/smart-search' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              🔍 Smart Search
-            </Link>
-            <Link href="/customer/ai-assistant" style={{
-              fontWeight: pathname === '/customer/ai-assistant' ? 600 : 500,
-              color: pathname === '/customer/ai-assistant' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none',
-              transition: 'var(--transition)'
-            }}>
-              🤖 AI Assistant
-            </Link>
-            <Link href="/customer/flashfest" style={{
-              fontWeight: pathname === '/customer/flashfest' ? 600 : 500,
-              color: pathname === '/customer/flashfest' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              FlashFest
-            </Link>
-            <Link href="/customer/checkout" style={{
-              fontWeight: 500,
-              color: 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Cart
-            </Link>
-            <Link href="/customer/profile" style={{
-              fontWeight: pathname === '/customer/profile' ? 600 : 500,
-              color: pathname === '/customer/profile' ? 'var(--primary)' : 'var(--text-muted)',
-              cursor: 'pointer',
-              textDecoration: 'none'
-            }}>
-              Profile
-            </Link>
-          </nav>
+      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 2.5rem', fontFamily: 'var(--font-family)' }}>
+        <div className="container" style={{ maxWidth: '1100px', display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              Hello, <strong>{user?.name}</strong>
-            </span>
-            <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 2rem' }}>
-        <div className="container" style={{ maxWidth: '1100px' }}>
-          
-          {/* Headline */}
-          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+          {/* Header section */}
+          <div style={{ textAlign: 'center' }}>
             <span style={{
               fontSize: '0.75rem',
-              fontWeight: 700,
+              fontWeight: 800,
               textTransform: 'uppercase',
-              letterSpacing: '0.15em',
+              letterSpacing: '0.08em',
               color: 'var(--primary)',
               backgroundColor: 'rgba(16, 185, 129, 0.08)',
-              padding: '0.5rem 1rem',
-              borderRadius: 'var(--radius-full)',
-              display: 'inline-block',
-              marginBottom: '1rem'
+              padding: '0.4rem 1rem',
+              borderRadius: '20px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              marginBottom: '0.75rem'
             }}>
-              AI Engine comparison
+              <Sparkles size={12} /> Real-Time Comparison Engine
             </span>
             <h1 style={{
               fontFamily: 'var(--font-display)',
               fontSize: '2.5rem',
-              fontWeight: 700,
+              fontWeight: 800,
               letterSpacing: '-0.02em',
               color: 'var(--foreground)',
-              marginBottom: '0.5rem'
+              margin: '0 0 0.5rem 0'
             }}>
-              🔍 Smart Search comparison
+              Smart Comparison Search
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', maxWidth: '600px', margin: '0 auto' }}>
-              Instantly compare prices, distance, stock levels, and delivery times from all local shops near you.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', maxWidth: '550px', margin: '0 auto' }}>
+              Find which local merchant has your products in stock at the best rates and closest delivery dispatches.
             </p>
           </div>
 
           {/* Search Inputs Card */}
-          <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid var(--border)', marginBottom: '2.5rem' }}>
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+          <div className="glass-card" style={{ padding: '1.75rem 2rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
               <input
                 type="text"
                 className="form-input"
-                placeholder="Search any product..."
+                placeholder="Type 'Milk', 'Bread', 'Apple', 'Cake'..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                style={{ flex: 1, minWidth: '280px', border: '1.5px solid var(--border)' }}
+                style={{ flex: 1, minWidth: '280px', border: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: '#ffffff', borderRadius: '12px' }}
                 disabled={searching}
               />
-              <button
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleSearch()}
                 className="btn btn-primary"
-                style={{ padding: '0.85rem 2.5rem' }}
+                style={{ padding: '0.75rem 2.5rem', borderRadius: '12px' }}
                 disabled={searching || !searchQuery.trim()}
               >
-                {searching ? 'Comparing...' : 'Compare Prices'}
-              </button>
+                {searching ? 'Querying...' : 'Compare Products'}
+              </motion.button>
             </div>
 
             {/* Quick Pills */}
-            <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', marginTop: '1.25rem', paddingBottom: '0.25rem' }} className="no-scrollbar">
+            <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto', marginTop: '1.25rem', paddingBottom: '0.25rem' }} className="no-scrollbar">
               {exampleSearches.map((pill) => (
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   key={pill}
                   onClick={() => {
                     setSearchQuery(pill);
@@ -418,226 +373,226 @@ export default function SmartSearchPage() {
                   }}
                   disabled={searching}
                   style={{
-                    backgroundColor: searchQuery === pill ? 'rgba(16, 185, 129, 0.08)' : 'var(--secondary)',
-                    border: `1px solid ${searchQuery === pill ? 'var(--primary)' : 'var(--border)'}`,
-                    color: searchQuery === pill ? 'var(--primary)' : 'var(--foreground)',
-                    borderRadius: 'var(--radius-full)',
+                    backgroundColor: searchQuery === pill ? 'rgba(16, 185, 129, 0.08)' : '#ffffff',
+                    border: `1px solid ${searchQuery === pill ? 'var(--primary)' : 'rgba(226, 232, 240, 0.6)'}`,
+                    color: searchQuery === pill ? 'var(--primary)' : 'var(--text-muted)',
+                    borderRadius: '20px',
                     padding: '0.35rem 0.85rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 500,
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
                     cursor: 'pointer',
                     transition: 'var(--transition)'
                   }}
                 >
                   {pill}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
 
-          {hasResults && (
+          {/* Search Result display */}
+          {searching ? (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="shimmer skeleton-image" style={{ height: '110px', borderRadius: '16px' }}></div>
+              <div className="shimmer skeleton-image" style={{ height: '110px', borderRadius: '16px' }}></div>
+              <div className="shimmer skeleton-image" style={{ height: '110px', borderRadius: '16px' }}></div>
+            </div>
+          ) : hasResults ? (
             <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               
               {/* Left Column: Comparisons & Results */}
-              <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 
                 {/* Sorting Options */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                    Found <strong>{comparisonResults.length}</strong> listings near you
+                  <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    Found {comparisonResults.length} options matching "{searchQuery}"
                   </span>
                   
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Sort by:</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <ArrowUpDown size={12} /> Sort:
+                    </span>
                     <select
                       value={sortBy}
                       onChange={(e: any) => setSortBy(e.target.value)}
                       style={{
-                        padding: '0.35rem 0.75rem',
-                        borderRadius: 'var(--radius-sm)',
-                        border: '1px solid var(--border)',
+                        padding: '0.4rem 0.75rem',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(226, 232, 240, 0.8)',
+                        fontSize: '0.8rem',
+                        fontWeight: 600,
                         backgroundColor: '#ffffff',
-                        fontSize: '0.85rem',
-                        fontWeight: 500,
-                        outline: 'none',
-                        cursor: 'pointer'
+                        cursor: 'pointer',
+                        color: 'var(--foreground)'
                       }}
                     >
-                      <option value="ai">AI Recommendation</option>
-                      <option value="price_asc">Lowest Price</option>
-                      <option value="rating_desc">Highest Rating</option>
-                      <option value="distance_asc">Nearest Shop</option>
-                      <option value="delivery_asc">Fastest Delivery</option>
-                      <option value="discount_desc">Highest Discount</option>
+                      <option value="ai">🌟 AI Recommended</option>
+                      <option value="price_asc">💵 Cheapest Price</option>
+                      <option value="rating_desc">⭐ Highest Rating</option>
+                      <option value="distance_asc">📍 Nearest Distance</option>
+                      <option value="delivery_asc">⚡ Fastest Delivery</option>
                     </select>
                   </div>
                 </div>
 
-                {/* AI Recommendation Highlight Banner */}
-                {sortBy === 'ai' && (
-                  <div style={{
-                    backgroundColor: 'rgba(16, 185, 129, 0.04)',
-                    border: '1.5px solid var(--primary)',
-                    borderRadius: 'var(--radius-md)',
-                    padding: '1.5rem 2rem',
-                    position: 'relative',
-                    overflow: 'hidden'
-                  }}>
-                    <span style={{
-                      backgroundColor: 'var(--primary)',
-                      color: '#ffffff',
-                      fontSize: '0.7rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      padding: '0.25rem 0.65rem',
-                      borderRadius: 'var(--radius-sm)',
-                      display: 'inline-block',
-                      marginBottom: '0.75rem'
-                    }}>
-                      💡 AI Top Recommendation
-                    </span>
-                    <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--foreground)' }}>
-                      {sortedResults[0].name} at {sortedResults[0].shopName}
-                    </h3>
-                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem' }}>
-                      Recommended because it offers the best value combination of ratings ({sortedResults[0].shopRating}★) and proximity ({(sortedResults[0].distance / 1000).toFixed(1)} km).
-                    </p>
-                  </div>
-                )}
-
-                {/* Comparison Listing Cards */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  {sortedResults.map((item) => (
-                    <div key={item.id} className="card" style={{
-                      backgroundColor: '#ffffff',
-                      padding: '1.5rem',
-                      border: '1px solid var(--border)',
-                      display: 'flex',
-                      gap: '1.5rem',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      position: 'relative'
-                    }}>
-                      {item.aiBadge && (
-                        <span style={{
-                          position: 'absolute',
-                          top: '12px',
-                          right: '12px',
-                          backgroundColor: item.aiBadge === 'Cheapest' ? '#059669' : 'rgba(15, 23, 42, 0.9)',
-                          color: '#ffffff',
-                          fontSize: '0.7rem',
-                          fontWeight: 700,
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: 'var(--radius-sm)'
-                        }}>
-                          {item.aiBadge}
-                        </span>
-                      )}
-
-                      <div style={{ width: '100px', height: '100px' }}>
+                {/* Main Results Listing */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <AnimatePresence>
+                    {sortedList.map((item) => (
+                      <motion.div
+                        layout
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        key={item.id}
+                        className="glass-card"
+                        style={{
+                          padding: '1.25rem',
+                          display: 'grid',
+                          gridTemplateColumns: '80px 1fr 160px',
+                          gap: '1.5rem',
+                          alignItems: 'center',
+                          border: item.aiBadge ? '1.5px solid var(--primary)' : '1px solid rgba(226,232,240,0.7)',
+                          backgroundColor: item.aiBadge ? 'rgba(16, 185, 129, 0.01)' : 'rgba(255, 255, 255, 0.65)'
+                        }}
+                      >
                         <OptimizedImage
                           src={item.image}
                           alt={item.name}
                           category={item.category}
-                          style={{
-                            width: '100px',
-                            height: '100px',
-                            objectFit: 'cover',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border)'
-                          }}
+                          style={{ width: '80px', height: '80px', borderRadius: '12px', objectFit: 'cover' }}
                         />
-                      </div>
 
-                      <div style={{ flex: 1, minWidth: '220px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{item.category}</span>
-                          <h3 style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--foreground)' }}>{item.name}</h3>
-                          <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-                            Shop: <strong style={{ color: 'var(--foreground)' }}>{item.shopName}</strong> ({item.shopRating}★)
-                          </span>
+                        <div>
+                          {item.aiBadge && (
+                            <span style={{
+                              display: 'inline-block',
+                              fontSize: '0.65rem',
+                              fontWeight: 800,
+                              backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                              color: 'var(--primary)',
+                              padding: '2px 8px',
+                              borderRadius: '20px',
+                              marginBottom: '0.4rem'
+                            }}>
+                              {item.aiBadge}
+                            </span>
+                          )}
+
+                          <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--foreground)', margin: '0 0 0.25rem 0' }}>{item.name}</h3>
+                          
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', fontWeight: 600, color: 'var(--foreground)' }}>
+                              <Store size={12} /> {item.shopName}
+                            </span>
+                            <span>•</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              <Star size={11} fill="#eab308" color="#eab308" /> {item.shopRating}
+                            </span>
+                            <span>•</span>
+                            <span>📍 {(item.distance / 1000).toFixed(1)} km</span>
+                            <span>•</span>
+                            <span>🕒 {item.deliveryTime}</span>
+                          </div>
                         </div>
 
-                        {/* Badges block */}
-                        <div style={{ display: 'flex', gap: '1.25rem', marginTop: '1rem', flexWrap: 'wrap' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Price</span>
-                            <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>₹{item.price}</strong>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', justifyContent: 'space-between', height: '100%' }}>
+                          <div style={{ textAlign: 'right' }}>
+                            <strong style={{ fontSize: '1.25rem', color: 'var(--foreground)', display: 'block' }}>₹{item.price}</strong>
+                            <span style={{
+                              fontSize: '0.65rem',
+                              fontWeight: 700,
+                              color: item.stock === 0 ? '#ef4444' : 'var(--primary)'
+                            }}>
+                              {item.stock === 0 ? 'Out of stock' : `⚡ Only ${item.stock} left`}
+                            </span>
                           </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.7er', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Distance</span>
-                            <strong style={{ fontSize: '0.95rem', color: 'var(--foreground)' }}>{(item.distance / 1000).toFixed(1)} km</strong>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Delivery</span>
-                            <strong style={{ fontSize: '0.95rem', color: 'var(--primary)' }}>{item.deliveryTime}</strong>
-                          </div>
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Stock</span>
-                            <strong style={{ fontSize: '0.95rem', color: item.stock <= 5 ? '#ef4444' : 'var(--foreground)' }}>
-                              {item.stock > 0 ? `${item.stock} left` : 'Sold out'}
-                            </strong>
-                          </div>
-                        </div>
-                      </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignSelf: 'stretch', justifyContent: 'center' }}>
-                        <Link href={`/customer/shop/${item.shopId}`} className="btn btn-primary" style={{ padding: '0.65rem 1.5rem', fontSize: '0.85rem', textAlign: 'center' }}>
-                          View Shop
-                        </Link>
-                      </div>
-                    </div>
-                  ))}
+                          <motion.button
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            onClick={() => handleAddItem(item)}
+                            disabled={item.stock === 0}
+                            style={{
+                              padding: '0.5rem 1rem',
+                              backgroundColor: 'var(--primary)',
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '8px',
+                              fontSize: '0.75rem',
+                              fontWeight: 700,
+                              cursor: item.stock === 0 ? 'not-allowed' : 'pointer',
+                              opacity: item.stock === 0 ? 0.5 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.35rem'
+                            }}
+                          >
+                            <ShoppingBag size={12} /> Add to Cart
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
-
               </div>
 
-              {/* Right Column: Estimated Savings summary */}
-              <div style={{ width: '340px', position: 'sticky', top: '100px' }}>
-                <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem', border: '1px solid var(--border)' }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.25rem' }}>
-                    Estimated Savings
-                  </h3>
-                  
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', marginBottom: '1.5rem' }}>
-                    Nexthood scans all surrounding inventory to make sure you get the best deal.
+              {/* Right Column: AI Quick Suggest details card */}
+              <aside style={{ width: '320px', flexShrink: 0, position: 'sticky', top: '100px' }}>
+                <div className="glass-card" style={{ padding: '1.5rem', border: '1.5px solid var(--primary)', backgroundColor: 'rgba(16, 185, 129, 0.02)' }}>
+                  <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                    <Sparkles size={16} style={{ color: 'var(--primary)' }} />
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--foreground)', margin: 0 }}>AI Smart Suggest</h4>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: '1.5', marginBottom: '1.25rem' }}>
+                    Nexthood AI compares spatial proximity coordinates with merchant inventory logs to recommend the ideal match, balancing cost and delivery speed.
                   </p>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '1.5rem', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Lowest Price:</span>
-                      <strong>₹{lowestPrice}</strong>
+                  <div style={{ borderTop: '1px solid rgba(16, 185, 129, 0.15)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <div style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Cheapest Option:</span>
+                      <strong style={{ color: 'var(--foreground)' }}>
+                        ₹{Math.min(...comparisonResults.map((c) => c.price))}
+                      </strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Highest Price:</span>
-                      <strong>₹{highestPrice}</strong>
+                    <div style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Nearest Store:</span>
+                      <strong style={{ color: 'var(--foreground)' }}>
+                        {(Math.min(...comparisonResults.map((c) => c.distance)) / 1000).toFixed(1)} km away
+                      </strong>
                     </div>
-                  </div>
-
-                  <div style={{ backgroundColor: 'rgba(16, 185, 129, 0.08)', borderRadius: 'var(--radius-md)', padding: '1rem 1.25rem', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#047857', fontWeight: 600, display: 'block', textTransform: 'uppercase' }}>Amount Saved</span>
-                    <strong style={{ fontSize: '1.5rem', color: '#065f46' }}>₹{amountSaved}</strong>
+                    <div style={{ fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+                      <span>Average Rating:</span>
+                      <strong style={{ color: 'var(--foreground)' }}>
+                        {(comparisonResults.reduce((acc, c) => acc + c.shopRating, 0) / comparisonResults.length).toFixed(1)} ★
+                      </strong>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </aside>
 
             </div>
-          )}
-
-          {!hasResults && searchQuery.trim() && !searching && (
-            <div className="card" style={{ padding: '3.5rem', textAlign: 'center', backgroundColor: '#ffffff' }}>
-              <span style={{ fontSize: '2.5rem', display: 'block', marginBottom: '1rem' }}>🛍️</span>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-                No listings found
-              </h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                No nearby shops currently have this product.
-              </p>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '5rem 0', color: 'var(--text-muted)' }}>
+              <Search size={40} style={{ margin: '0 auto 1rem auto', color: '#cbd5e1' }} />
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--foreground)', marginBottom: '0.25rem' }}>No comparison listings fetched yet</h3>
+              <p style={{ fontSize: '0.85rem' }}>Type a query in the search bar above or choose a quick pill filter to find products.</p>
             </div>
           )}
 
         </div>
       </main>
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </>
   );
 }

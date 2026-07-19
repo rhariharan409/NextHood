@@ -6,6 +6,8 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import { useCart, CartItem } from '@/context/CartContext';
 import { getDistance } from '@/lib/overpass';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MapPin, ShieldCheck, CreditCard, ShoppingBag, Truck, Gift, CheckCircle, Clock } from 'lucide-react';
 
 interface User {
   id: string;
@@ -127,7 +129,7 @@ export default function CheckoutPage() {
     }
   };
 
-  // 2. Reserve stock immediately when checkout page loads (Tatkal / flash sale style)
+  // 2. Reserve stock immediately when checkout page loads
   useEffect(() => {
     async function runReservations() {
       if (cartItems.length === 0 || !shop || !user) return;
@@ -193,7 +195,6 @@ export default function CheckoutPage() {
   // Release reservations on component unmount (if order was not confirmed)
   useEffect(() => {
     return () => {
-      // If orderConfirmed is false when leaving checkout page, release reservations back to stock pool
       if (Object.keys(reservedItems).length > 0 && !orderConfirmed) {
         releaseReservations(reservedItems);
       }
@@ -224,7 +225,6 @@ export default function CheckoutPage() {
   }, [shop, userCoords]);
 
   // Math totals
-  console.log('cartItems:', cartItems);
   const subtotal = cartItems.reduce(
     (sum, item) => sum + Number(item.product.price || 0) * Number(item.quantity || 1),
     0
@@ -242,322 +242,149 @@ export default function CheckoutPage() {
     }, 2000);
   };
 
-  // Simulate payment failure (Failure Handling & stock restoration)
+  // Simulate payment failure
   const handleSimulatePaymentFailure = async () => {
     setConfirmingPayment(true);
     setTimeout(async () => {
       setConfirmingPayment(false);
       setPaymentConfirmed(false);
-      
-      // Automatically restore reserved inventory
+      setReservationError('Online Payment Failed. Staged stock has been released back to shop.');
       await releaseReservations(reservedItems);
       setReservedItems({});
-      setReservationError('Online payment failed. Your reserved items have been restored to active inventory.');
     }, 1500);
   };
 
-  const handlePlaceOrder = () => {
-    if (cartItems.length === 0 || !shop) return;
-    
-    const orderId = 'NH-' + Math.floor(100000 + Math.random() * 900000);
+  // 4. Place Order & Route Logistics
+  const handlePlaceOrder = async () => {
+    if (!user || cartItems.length === 0 || !shop) return;
+    if (paymentMethod === 'online' && !paymentConfirmed) return;
 
-    // Calculate logistics optimizer attributes
-    const perishables = ['cake', 'muffin', 'burger', 'pizza', 'salad', 'paracetamol', 'chewables', 'apple', 'tomato', 'milk', 'egg'];
-    const hasPerishable = cartItems.some(i => perishables.some(p => i.product.name.toLowerCase().includes(p)));
-    const itemCount = cartItems.reduce((acc, i) => acc + i.quantity, 0);
+    try {
+      const itemsJson = cartItems.map((item) => ({
+        id: item.product.id,
+        name: item.product.name,
+        price: item.product.price,
+        quantity: item.quantity
+      }));
 
-    let vehicle = '🏍 Bike';
-    let icon = '🏍';
-    let reason = `Small order with only ${itemCount} products and delivery distance of ${distance} km. A bike provides the fastest and most cost-effective delivery.`;
-    let timeEst = '12 Minutes';
-    let fuelCost = 0;
-    let co2Saved = '100% (Zero emission electric cycle)';
-
-    if (hasPerishable) {
-      vehicle = '❄ Refrigerated Vehicle';
-      icon = '❄';
-      reason = 'This order contains temperature-sensitive perishable items. A refrigerated container ensures freshness.';
-      timeEst = `${Math.round(10 + distance * 4)} Minutes`;
-      fuelCost = Math.round(distance * 12);
-      co2Saved = '15% (Reduced emissions)';
-    } else if (itemCount >= 100) {
-      vehicle = '🚚 Lorry / Mini Truck';
-      icon = '🚚';
-      reason = `Bulk wholesale order with ${itemCount} items. Requiring heavy carriage transport over ${distance} km.`;
-      timeEst = `${Math.round(25 + distance * 5)} Minutes`;
-      fuelCost = Math.round(distance * 25);
-      co2Saved = '0% (Standard mini truck)';
-    } else if (itemCount >= 20) {
-      vehicle = '🚐 Mini Van';
-      icon = '🚐';
-      reason = `Large bulk grocery shopping with ${itemCount} items. Optimized for mini van volume capacity.`;
-      timeEst = `${Math.round(18 + distance * 4.5)} Minutes`;
-      fuelCost = Math.round(distance * 16);
-      co2Saved = '10% (Multi-stop delivery)';
-    } else if (itemCount >= 6 || distance > 8) {
-      vehicle = '🚗 Car';
-      icon = '🚗';
-      reason = `Medium size order with ${itemCount} items over ${distance} km distance. Car transit chosen for volume security.`;
-      timeEst = `${Math.round(12 + distance * 4)} Minutes`;
-      fuelCost = Math.round(distance * 10);
-      co2Saved = '30% (E-vehicle hybrid)';
-    }
-
-    const plan = {
-      vehicle,
-      icon,
-      reason,
-      deliveryTime: timeEst,
-      fuelCost,
-      distance,
-      co2Saved,
-      driverName: ['Ramesh Kumar', 'Suresh Singh', 'Arjun Dev', 'Vikram Sen'][Math.floor(Math.random() * 4)],
-      expectedPickup: '5 mins'
-    };
-
-    setLogisticsPlan(plan);
-
-    // POST the order to the backend database
-    const placeOrderOnBackend = async () => {
-      try {
-        // Fetch the latest inventory from the database again (Requirement 7)
-        const checkRes = await fetch(`/api/places/details?id=${shop.id}`);
-        if (!checkRes.ok) {
-          alert('Failed to validate stock. Please try again.');
-          return;
-        }
-        const checkData = await checkRes.json();
-        const latestProducts = checkData.products || [];
-        
-        let inventoryFailure = false;
-        let outOfStockItemName = '';
-        
-        for (const item of cartItems) {
-          const dbProd = latestProducts.find((p: any) => p.id === item.product.id);
-          const dbStock = dbProd ? parseInt(dbProd.stock) || 0 : 0;
-          if (dbStock <= 0) {
-            removeFromCart(item.product.id);
-            outOfStockItemName = item.product.name;
-            inventoryFailure = true;
-            break;
-          }
-        }
-        
-        if (inventoryFailure) {
-          alert(`${outOfStockItemName} is currently out of stock.`);
-          return;
-        }
-
-        const orderPayload = {
-          customerId: user ? user.id : 'guest',
-          customerName: user ? user.name : 'Guest User',
+      const res = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: user.id,
+          customerName: user.name,
           sellerId: shop.id,
           sellerName: shop.name,
           storeName: shop.name,
-          items: cartItems.map(item => ({
-            id: item.product.id,
-            sellerId: shop.id,
-            sellerName: shop.name,
-            name: item.product.name,
-            price: Number(item.product.price || 0),
-            quantity: Number(item.quantity || 1),
-            image: item.product.image || '',
-            stock: (item.product as any).stock || 25
-          })),
-          subtotal: Number(subtotal),
-          deliveryCharge: Number(deliveryCharge),
-          platformFee: Number(platformFee),
-          tax: Number(taxes),
-          grandTotal: Number(grandTotal),
-          paymentMethod: paymentMethod,
-          deliveryAddress: deliveryAddress || 'No.24 Gandhi Street, Tambaram, Chennai',
-          latitude: userCoords ? userCoords.lat : shop.lat,
-          longitude: userCoords ? userCoords.lon : shop.lon,
-          createdAt: new Date().toISOString(),
-          status: 'Active'
-        };
+          items: itemsJson,
+          subtotal,
+          deliveryCharge,
+          platformFee,
+          tax: taxes,
+          grandTotal,
+          paymentMethod,
+          deliveryAddress,
+          latitude: userCoords?.lat || 12.9716,
+          longitude: userCoords?.lon || 77.5946
+        })
+      });
 
-        console.log('orderPayload:', orderPayload);
-
-        const response = await fetch('/api/orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(orderPayload)
-        });
+      if (res.ok) {
+        const orderData = await res.json();
         
-        if (response.ok) {
-          // Clear active shopping cart
-          clearCart();
-          
-          // Clear reservedItems state since reservation is now finalized as a successful order
-          setReservedItems({});
-
-          // Navigate to orders history/status page
-          router.push('/orders?success=true');
-        } else {
-          const errData = await response.json();
-          alert(errData.error || 'Failed to place order.');
+        // Notify seller via WebSocket to sync dashboard stats
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({
+            type: 'broadcast_update',
+            shopId: shop.id,
+            productId: 'STATUS_SYNC',
+            updateType: 'order_status_change'
+          }));
         }
-      } catch (err) {
-        console.error('Error placing order:', err);
-        alert('An error occurred while placing your order. Please try again.');
+
+        setConfirmedOrderId(orderData.order.orderNumber || orderData.order.id);
+        setConfirmedDeliveryTime(deliveryTime);
+        setLogisticsPlan(orderData.logistics);
+        setOrderConfirmed(true);
+        clearCart();
+      } else {
+        alert('Order placement failed. Please try again.');
       }
-    };
-    
-    placeOrderOnBackend();
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleBackLink = async () => {
-    // Explicitly release stock before navigating away
-    if (Object.keys(reservedItems).length > 0) {
-      await releaseReservations(reservedItems);
-      setReservedItems({});
+  const handleBackLink = () => {
+    if (shop) {
+      router.push(`/customer/shop/${shop.id}`);
+    } else {
+      router.push('/customer/home');
     }
-    router.push(shop ? `/customer/shop/${shop.id}` : '/customer/home');
   };
 
   if (loading) {
     return (
-      <div style={{
-        height: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontFamily: 'var(--font-family)',
-        color: 'var(--text-muted)'
-      }}>
-        Preparing checkout...
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
+        <Header />
+        <div className="container" style={{ maxWidth: '1100px', padding: '3rem 2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="shimmer skeleton-title" style={{ height: '40px', width: '50%' }}></div>
+          <div className="shimmer skeleton-image" style={{ height: '300px' }}></div>
+        </div>
       </div>
     );
   }
 
   if (!user) return null;
 
-  // Confirmation Success Screen
   if (orderConfirmed) {
     return (
       <>
-        <Header />
-        <main style={{ flex: 1, backgroundColor: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 2rem' }}>
-          <div className="card" style={{ maxWidth: '550px', width: '100%', textAlign: 'center', padding: '4rem 3rem' }}>
-            <span style={{ fontSize: '4rem', display: 'block', marginBottom: '1.5rem' }}>🎉</span>
-            <span style={{
-              fontSize: '0.85rem',
-              fontWeight: 600,
-              textTransform: 'uppercase',
-              letterSpacing: '0.1em',
-              color: 'var(--primary)',
-              marginBottom: '0.5rem',
-              display: 'block'
-            }}>
-              Order Placed Successfully
-            </span>
-            <h1 style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: '2.5rem',
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              marginBottom: '1rem',
-              color: 'var(--foreground)'
-            }}>
-              Order Confirmed
+        <Header currentUser={{ name: user.name, role: 'Customer' }} />
+        <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '4rem 2rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="glass-card"
+            style={{ maxWidth: '520px', width: '100%', padding: '2.5rem', textAlign: 'center', border: '1px solid rgba(16,185,129,0.15)', backgroundColor: '#ffffff' }}
+          >
+            <CheckCircle size={56} color="var(--primary)" style={{ margin: '0 auto 1.5rem auto' }} />
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', fontWeight: 800, color: 'var(--foreground)', marginBottom: '0.5rem' }}>
+              Order Confirmed!
             </h1>
-            <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: '1.5', marginBottom: '2.5rem' }}>
-              Your order from <strong style={{ color: 'var(--foreground)' }}>{shop?.name || 'the merchant'}</strong> has been accepted.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2rem' }}>
+              Your order has been routed and dispatches are staging.
             </p>
 
-            <div style={{
-              backgroundColor: 'var(--secondary)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-md)',
-              padding: '1.5rem 2rem',
-              textAlign: 'left',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '0.75rem',
-              marginBottom: '2rem'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Order ID:</span>
+            <div style={{ backgroundColor: '#f8fafc', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(226,232,240,0.6)', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', textAlign: 'left', marginBottom: '2rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Order Reference:</span>
                 <strong style={{ fontFamily: 'monospace' }}>{confirmedOrderId}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Estimated Delivery:</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Estimated Delivery:</span>
                 <strong style={{ color: 'var(--primary)' }}>{confirmedDeliveryTime}</strong>
               </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>Total Sourced:</span>
+                <strong>₹{grandTotal}</strong>
+              </div>
+              {logisticsPlan && (
+                <div style={{ borderTop: '1px solid rgba(226,232,240,0.6)', paddingTop: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  📍 <strong>Dispatch Route:</strong> Sourced from shop at coord [{logisticsPlan.shopCoords?.lat.toFixed(4)}, {logisticsPlan.shopCoords?.lon.toFixed(4)}] to destination coord [{logisticsPlan.customerCoords?.lat.toFixed(4)}, {logisticsPlan.customerCoords?.lon.toFixed(4)}] (Approx. {logisticsPlan.distanceKm} km).
+                </div>
+              )}
             </div>
 
-            {logisticsPlan && (
-              <div className="card" style={{
-                backgroundColor: '#ffffff',
-                border: '1.5px solid var(--primary)',
-                borderRadius: 'var(--radius-md)',
-                padding: '1.5rem',
-                textAlign: 'left',
-                marginBottom: '3rem',
-                boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02)'
-              }}>
-                <strong style={{ fontSize: '0.8rem', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '0.75rem' }}>
-                  🚚 Smart Delivery Plan
-                </strong>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '2.5rem' }}>{logisticsPlan.icon}</span>
-                  <div>
-                    <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{logisticsPlan.vehicle}</h3>
-                    <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: 0 }}>Driver: <strong>{logisticsPlan.driverName}</strong></p>
-                  </div>
-                </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem', lineHeight: '1.4' }}>
-                  {logisticsPlan.reason}
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '0.75rem', fontSize: '0.8rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>Distance:</span>
-                    <strong>{logisticsPlan.distance} km</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>Delivery Est:</span>
-                    <strong>{logisticsPlan.deliveryTime}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>Fuel Cost:</span>
-                    <strong>₹{logisticsPlan.fuelCost}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: 'var(--text-muted)', display: 'block' }}>CO₂ Saved:</span>
-                    <strong style={{ color: 'var(--primary)' }}>{logisticsPlan.co2Saved}</strong>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <button onClick={() => router.push('/customer/home')} className="btn btn-primary" style={{ width: '100%' }}>
-              Back to Home
-            </button>
-          </div>
-        </main>
-      </>
-    );
-  }
-
-  // Cart is Empty Screen
-  if (cartItems.length === 0) {
-    return (
-      <>
-        <Header />
-        <main style={{ flex: 1, backgroundColor: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '3rem 2rem' }}>
-          <div className="card" style={{ maxWidth: '500px', width: '100%', textAlign: 'center', padding: '3.5rem' }}>
-            <span style={{ fontSize: '3rem', display: 'block', marginBottom: '1rem' }}>🛒</span>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.5rem', fontWeight: 700, marginBottom: '0.5rem' }}>
-              Your cart is empty
-            </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '2rem' }}>
-              Looks like you haven't added any products to your cart yet.
-            </p>
-            <button onClick={() => router.push('/customer/home')} className="btn btn-primary" style={{ width: '100%' }}>
-              Go Explore Shops
-            </button>
-          </div>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <Link href="/orders" className="btn btn-primary" style={{ flex: 1, padding: '0.75rem 0', textDecoration: 'none', borderRadius: '12px' }}>
+                📍 Track Order Live
+              </Link>
+              <Link href="/customer/home" className="btn btn-secondary" style={{ flex: 1, padding: '0.75rem 0', textDecoration: 'none', borderRadius: '12px' }}>
+                Return Home
+              </Link>
+            </div>
+          </motion.div>
         </main>
       </>
     );
@@ -565,53 +392,73 @@ export default function CheckoutPage() {
 
   return (
     <>
-      <Header />
-      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 2rem' }}>
-        <div className="container" style={{ maxWidth: '1100px' }}>
+      <Header currentUser={{ name: user.name, role: 'Customer' }} />
+
+      <main style={{ flex: 1, backgroundColor: '#f8fafc', padding: '3rem 1.5rem', fontFamily: 'var(--font-family)' }}>
+        <div className="container" style={{ maxWidth: '1100px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
             <button
               onClick={handleBackLink}
               style={{
                 color: 'var(--primary)',
-                fontWeight: 600,
-                fontSize: '0.95rem',
+                fontWeight: 700,
+                fontSize: '0.9rem',
                 background: 'none',
                 border: 'none',
                 cursor: 'pointer',
                 textAlign: 'left',
-                padding: 0
+                padding: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.25rem'
               }}
             >
               ← Return to shop
             </button>
-            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.25rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'var(--foreground)' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2.2rem', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--foreground)' }}>
               Secure Checkout
             </h1>
           </div>
 
-          {reservingStock && (
-            <div style={{
-              backgroundColor: 'rgba(16, 185, 129, 0.08)',
-              border: '1px solid var(--primary)',
-              borderRadius: 'var(--radius-md)',
-              padding: '1.25rem',
-              color: 'var(--primary)',
-              fontWeight: 600,
-              marginBottom: '2rem',
-              textAlign: 'center'
-            }}>
-              ⚡ Reserving stock slots in real-time...
-            </div>
-          )}
+          <AnimatePresence>
+            {reservingStock && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
+                  border: '1.5px solid var(--primary)',
+                  borderRadius: '16px',
+                  padding: '1rem',
+                  color: 'var(--primary)',
+                  fontWeight: 700,
+                  fontSize: '0.85rem',
+                  textAlign: 'center'
+                }}
+              >
+                ⚡ Tatkal Allocations: Securing stock slots in real-time...
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {reservationError && (
-            <div className="message message-error" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <span style={{ fontSize: '1rem', fontWeight: 600 }}>{reservationError}</span>
+            <div style={{
+              backgroundColor: '#fef2f2',
+              border: '1px solid #fee2e2',
+              padding: '1.5rem',
+              borderRadius: '20px',
+              color: '#ef4444',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem'
+            }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700 }}>{reservationError}</span>
               <button
                 onClick={handleBackLink}
                 className="btn btn-primary"
-                style={{ width: '200px', fontSize: '0.85rem', padding: '0.5rem 0' }}
+                style={{ width: '200px', fontSize: '0.8rem', padding: '0.5rem 0', borderRadius: '8px' }}
               >
                 Go Back to Shop
               </button>
@@ -619,45 +466,41 @@ export default function CheckoutPage() {
           )}
 
           {!reservingStock && !reservationError && (
-            <div style={{
-              display: 'flex',
-              gap: '2rem',
-              flexWrap: 'wrap',
-              alignItems: 'flex-start'
-            }}>
+            <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
               
               {/* Left Column: Delivery & Payment Details */}
               <div style={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 
                 {/* Delivery Information Card */}
-                <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem' }}>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>📍</span> Delivery Information
+                <div className="glass-card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground)' }}>
+                    <MapPin size={18} className="text-primary" /> Delivery Information
                   </h2>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Deliver to</span>
-                      <strong style={{ fontSize: '1rem', color: 'var(--foreground)' }}>{user.name}</strong>
+                    <div style={{ borderBottom: '1px solid rgba(226,232,240,0.6)', paddingBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Recipient Name</span>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--foreground)' }}>{user.name}</strong>
                     </div>
 
-                    <div style={{ borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>Address Details</span>
-                      <p style={{ fontSize: '0.95rem', color: 'var(--foreground)', marginBottom: '0.5rem' }}>
-                        GPS Located Neighborhood, Latitude: {userCoords?.lat.toFixed(5) || 'Searching...'}, Longitude: {userCoords?.lon.toFixed(5) || 'Searching...'}
+                    <div style={{ borderBottom: '1px solid rgba(226,232,240,0.6)', paddingBottom: '1rem' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.25rem' }}>GPS Coordinates</span>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--foreground)', marginBottom: '0.5rem' }}>
+                        Latitude: {userCoords?.lat.toFixed(5) || 'Finding...'}, Longitude: {userCoords?.lon.toFixed(5) || 'Finding...'}
                       </p>
-                      <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '0.25rem', fontWeight: 600 }}>Complete Delivery Address</label>
+                      <label style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 700 }}>Complete Delivery Address</label>
                       <textarea
                         value={deliveryAddress}
                         onChange={(e) => setDeliveryAddress(e.target.value)}
                         style={{
                           width: '100%',
                           padding: '0.75rem',
-                          border: '1px solid var(--border)',
-                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid rgba(226, 232, 240, 0.8)',
+                          borderRadius: '12px',
                           fontFamily: 'inherit',
                           fontSize: '0.9rem',
-                          resize: 'vertical'
+                          resize: 'vertical',
+                          outline: 'none'
                         }}
                         placeholder="Enter complete delivery address"
                         rows={3}
@@ -666,12 +509,12 @@ export default function CheckoutPage() {
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                      <div style={{ backgroundColor: 'var(--secondary)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Distance from Shop</span>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(226,232,240,0.6)' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Distance from Shop</span>
                         <strong style={{ fontSize: '1.1rem', color: 'var(--foreground)' }}>{distance} km</strong>
                       </div>
-                      <div style={{ backgroundColor: 'var(--secondary)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block' }}>Estimated Time</span>
+                      <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '16px', border: '1px solid rgba(226,232,240,0.6)' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', display: 'block' }}>Estimated Time</span>
                         <strong style={{ fontSize: '1.1rem', color: 'var(--primary)' }}>{deliveryTime}</strong>
                       </div>
                     </div>
@@ -679,9 +522,9 @@ export default function CheckoutPage() {
                 </div>
 
                 {/* Payment Methods Card */}
-                <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem' }}>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span>💳</span> Payment Methods
+                <div className="glass-card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground)' }}>
+                    <CreditCard size={18} className="text-primary" /> Payment Methods
                   </h2>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -692,11 +535,11 @@ export default function CheckoutPage() {
                       alignItems: 'flex-start',
                       gap: '1rem',
                       padding: '1.25rem',
-                      border: `1.5px solid ${paymentMethod === 'cod' ? 'var(--primary)' : 'var(--border)'}`,
-                      borderRadius: 'var(--radius-md)',
+                      border: `1.5px solid ${paymentMethod === 'cod' ? 'var(--primary)' : 'rgba(226, 232, 240, 0.6)'}`,
+                      borderRadius: '16px',
                       cursor: 'pointer',
                       backgroundColor: paymentMethod === 'cod' ? 'rgba(16, 185, 129, 0.02)' : '#ffffff',
-                      transition: 'var(--transition)'
+                      transition: 'border-color 0.2s ease'
                     }}>
                       <input
                         type="radio"
@@ -707,7 +550,7 @@ export default function CheckoutPage() {
                       />
                       <div>
                         <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--foreground)' }}>Cash on Delivery</strong>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Pay when your order is delivered.</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Pay when your order reaches your doorstep.</span>
                       </div>
                     </label>
 
@@ -717,11 +560,11 @@ export default function CheckoutPage() {
                       alignItems: 'flex-start',
                       gap: '1rem',
                       padding: '1.25rem',
-                      border: `1.5px solid ${paymentMethod === 'online' ? 'var(--primary)' : 'var(--border)'}`,
-                      borderRadius: 'var(--radius-md)',
+                      border: `1.5px solid ${paymentMethod === 'online' ? 'var(--primary)' : 'rgba(226, 232, 240, 0.6)'}`,
+                      borderRadius: '16px',
                       cursor: 'pointer',
                       backgroundColor: paymentMethod === 'online' ? 'rgba(16, 185, 129, 0.02)' : '#ffffff',
-                      transition: 'var(--transition)'
+                      transition: 'border-color 0.2s ease'
                     }}>
                       <input
                         type="radio"
@@ -732,167 +575,123 @@ export default function CheckoutPage() {
                       />
                       <div style={{ width: '100%' }}>
                         <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--foreground)' }}>Online Payment (UPI Scan & Pay)</strong>
-                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Generate a QR code to pay with any UPI app.</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Generate a secure QR code to pay instantly.</span>
 
                         {paymentMethod === 'online' && (
                           <div style={{
                             marginTop: '1.5rem',
                             paddingTop: '1.5rem',
-                            borderTop: '1px solid var(--border)',
+                            borderTop: '1px solid rgba(226, 232, 240, 0.6)',
                             display: 'flex',
                             flexDirection: 'column',
                             alignItems: 'center',
                             textAlign: 'center',
                             gap: '1rem'
                           }}>
-                            <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>Scan & Pay</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Scan UPI QR code</span>
                             
                             <img
-                              src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(
-                                `upi://pay?pa=nexthood@pay&pn=Nexthood&am=${grandTotal}&cu=INR`
-                              )}`}
-                              alt="Payment QR Code"
-                              style={{
-                                width: '180px',
-                                height: '180px',
-                                border: '1px solid var(--border)',
-                                borderRadius: 'var(--radius-md)',
-                                padding: '0.5rem',
-                                backgroundColor: '#ffffff'
-                              }}
+                              src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=upi://pay?pa=nexthood@bank%26pn=Nexthood%2520Sourced%26am=${grandTotal}%26cu=INR`}
+                              alt="UPI QR Code"
+                              style={{ border: '1px solid rgba(226, 232, 240, 0.8)', padding: '0.5rem', borderRadius: '12px' }}
                             />
-                            
-                            <span style={{ fontSize: '1.1rem', fontWeight: 700 }}>₹{grandTotal}</span>
 
-                            {!paymentConfirmed ? (
-                              <div style={{ display: 'flex', gap: '0.75rem', width: '100%', justifyContent: 'center' }}>
-                                <button
-                                  type="button"
-                                  onClick={handleSimulatePayment}
-                                  disabled={confirmingPayment}
-                                  className="btn btn-primary"
-                                  style={{ flex: 1, maxWidth: '180px', fontSize: '0.85rem', padding: '0.5rem 0' }}
-                                >
-                                  {confirmingPayment ? 'Verifying...' : 'Simulate Success'}
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={handleSimulatePaymentFailure}
-                                  disabled={confirmingPayment}
-                                  className="btn btn-secondary"
-                                  style={{ flex: 1, maxWidth: '180px', fontSize: '0.85rem', padding: '0.5rem 0', color: '#ef4444', borderColor: '#fca5a5' }}
-                                >
-                                  Simulate Failure
-                                </button>
-                              </div>
-                            ) : (
-                              <div style={{ color: 'var(--primary)', fontWeight: 600, fontSize: '0.9rem' }}>
-                                ✅ Payment Confirmed! You can now place your order.
-                              </div>
-                            )}
+                            <div style={{ display: 'flex', gap: '0.5rem', width: '100%', flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                onClick={handleSimulatePayment}
+                                disabled={confirmingPayment || paymentConfirmed}
+                                className="btn btn-primary"
+                                style={{ flex: 1, fontSize: '0.75rem', padding: '0.55rem 0', borderRadius: '8px' }}
+                              >
+                                {confirmingPayment ? 'Paying...' : paymentConfirmed ? '🟢 Verified Success' : 'Simulate Success'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={handleSimulatePaymentFailure}
+                                disabled={confirmingPayment || paymentConfirmed}
+                                className="btn btn-secondary"
+                                style={{ flex: 1, fontSize: '0.75rem', padding: '0.55rem 0', borderRadius: '8px', color: '#ef4444', borderColor: 'rgba(239,68,68,0.2)' }}
+                              >
+                                Simulate Failure
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
                     </label>
-
                   </div>
                 </div>
-
               </div>
 
-              {/* Right Column: Sticky Order Summary */}
-              <div style={{
-                width: '380px',
-                position: 'sticky',
-                top: '100px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '1.5rem'
-              }}>
-                
-                <div className="card" style={{ backgroundColor: '#ffffff', padding: '2rem' }}>
-                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem' }}>
-                    Order Summary
+              {/* Right Column: Order Summary Card */}
+              <aside style={{ width: '420px', flexShrink: 0, position: 'sticky', top: '100px' }}>
+                <div className="glass-card" style={{ padding: '2rem', backgroundColor: '#ffffff' }}>
+                  <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 800, marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--foreground)' }}>
+                    <ShoppingBag size={18} className="text-primary" /> Order Summary
                   </h2>
 
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginBottom: '1rem' }}>
-                    Ordering from <strong>{shop?.name || 'Local Business'}</strong>
-                  </span>
-
-                  {/* Items list */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '200px', overflowY: 'auto', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                     {cartItems.map((item) => (
-                      <div key={item.product.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem' }}>
-                        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                          <img
-                            src={item.product.image}
-                            alt={item.product.name}
-                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
-                          />
-                          <div>
-                            <strong style={{ display: 'block', fontSize: '0.85rem' }}>{item.product.name}</strong>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Qty: {item.quantity}</span>
-                          </div>
+                      <div key={item.product.id} style={{ display: 'flex', justifyItems: 'center', gap: '0.75rem' }}>
+                        <img
+                          src={item.product.image}
+                          alt={item.product.name}
+                          style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '8px', border: '1px solid rgba(226,232,240,0.6)' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, display: 'block', color: 'var(--foreground)' }}>{item.product.name}</span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Quantity: {item.quantity}</span>
                         </div>
-                        <div>
-                          <span style={{ fontWeight: 600 }}>₹{item.product.price * item.quantity}</span>
-                        </div>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--foreground)' }}>₹{item.product.price * item.quantity}</span>
                       </div>
                     ))}
                   </div>
 
-                  {/* Subtotal computing */}
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.9rem' }}>
+                  {/* Calculations */}
+                  <div style={{ borderTop: '1px solid rgba(226, 232, 240, 0.6)', paddingTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Subtotal</span>
-                      <span>₹{subtotal}</span>
+                      <span>Subtotal</span>
+                      <strong style={{ color: 'var(--foreground)' }}>₹{subtotal}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Delivery Charge</span>
-                      <span>₹{deliveryCharge}</span>
+                      <span>Delivery Charge</span>
+                      <strong style={{ color: 'var(--foreground)' }}>₹{deliveryCharge}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Platform Fee</span>
-                      <span>₹{platformFee}</span>
+                      <span>Platform Fee</span>
+                      <strong style={{ color: 'var(--foreground)' }}>₹{platformFee}</strong>
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                      <span style={{ color: 'var(--text-muted)' }}>Taxes (5% GST)</span>
-                      <span>₹{taxes}</span>
+                      <span>GST (5%)</span>
+                      <strong style={{ color: 'var(--foreground)' }}>₹{taxes}</strong>
                     </div>
-
-                    <div style={{
-                      borderTop: '1px solid var(--border)',
-                      paddingTop: '1.25rem',
-                      marginTop: '0.5rem',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      fontSize: '1.15rem',
-                      fontWeight: 700,
-                      color: 'var(--foreground)'
-                    }}>
-                      <span>Grand Total</span>
-                      <span>₹{grandTotal}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(226, 232, 240, 0.6)', paddingTop: '1rem', fontSize: '1.1rem' }}>
+                      <span style={{ color: 'var(--foreground)', fontWeight: 800 }}>Grand Total</span>
+                      <strong style={{ color: 'var(--primary)', fontWeight: 800 }}>₹{grandTotal}</strong>
                     </div>
                   </div>
 
-                  {/* Place Order Trigger */}
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={handlePlaceOrder}
                     disabled={paymentMethod === 'online' && !paymentConfirmed}
-                    className="btn btn-primary btn-large"
+                    className="btn btn-primary"
                     style={{
                       width: '100%',
-                      marginTop: '2rem',
-                      boxShadow: '0 10px 20px rgba(16, 185, 129, 0.15)',
-                      opacity: paymentMethod === 'online' && !paymentConfirmed ? 0.6 : 1,
-                      cursor: paymentMethod === 'online' && !paymentConfirmed ? 'not-allowed' : 'pointer'
+                      padding: '0.85rem 0',
+                      marginTop: '1.5rem',
+                      borderRadius: '12px',
+                      boxShadow: '0 4px 12px rgba(16,185,129,0.2)',
+                      opacity: (paymentMethod === 'online' && !paymentConfirmed) ? 0.5 : 1,
+                      cursor: (paymentMethod === 'online' && !paymentConfirmed) ? 'not-allowed' : 'pointer'
                     }}
                   >
-                    Place Order
-                  </button>
+                    Place Sourced Order
+                  </motion.button>
                 </div>
-
-              </div>
+              </aside>
 
             </div>
           )}
