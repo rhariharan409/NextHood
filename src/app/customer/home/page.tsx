@@ -6,7 +6,7 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { Business, BusinessSearchService } from '@/lib/businessSearch';
 import Header from '@/components/Header';
-import { Search, MapPin, Star, Clock, Compass, Grid, Sparkles, AlertCircle } from 'lucide-react';
+import { Search, MapPin, Star, Clock, Compass, Grid, Sparkles, AlertCircle, Mic, Store, Navigation } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Load Leaflet Map dynamically to avoid SSR "window is not defined" error
@@ -163,6 +163,20 @@ export default function CustomerHomePage() {
     }
   };
 
+  const handleVoiceInputSimulate = () => {
+    const textToType = 'Fresh Organic Apples';
+    let index = 0;
+    const timer = setInterval(() => {
+      if (index < textToType.length) {
+        setSearchQuery(textToType.substring(0, index + 1));
+        index++;
+      } else {
+        clearInterval(timer);
+        handleSearch(false, textToType);
+      }
+    }, 60);
+  };
+
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#f8fafc' }}>
@@ -183,7 +197,7 @@ export default function CustomerHomePage() {
   if (!user) return null;
 
   return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff', overflow: 'hidden' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Header currentUser={{ name: user.name, role: 'Customer' }} onLogout={handleLogout} />
 
       {/* Main Dashboard Layout */}
@@ -192,12 +206,14 @@ export default function CustomerHomePage() {
         {/* Left Search & Detail Panel */}
         <aside style={{
           width: '420px',
-          backgroundColor: '#ffffff',
-          borderRight: '1px solid rgba(226, 232, 240, 0.8)',
+          backgroundColor: 'rgba(255, 255, 255, 0.45)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRight: '1px solid rgba(255, 255, 255, 0.25)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 10,
-          boxShadow: '4px 0 30px rgba(0,0,0,0.01)',
+          boxShadow: '4px 0 30px rgba(15,23,42,0.02)',
           flexShrink: 0,
         }}>
           {/* Welcome and Tagline Header */}
@@ -206,63 +222,84 @@ export default function CustomerHomePage() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3 }}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.4rem' }}
             >
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                <Sparkles size={12} /> Live Neighborhood Map
+              <span style={{ fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <Sparkles size={12} /> Good Morning, {user.name.split(' ')[0]} 👋
               </span>
             </motion.div>
             <h2 style={{
               fontFamily: 'var(--font-display)',
-              fontSize: '1.6rem',
-              fontWeight: 700,
-              letterSpacing: '-0.02em',
-              color: 'var(--foreground)'
+              fontSize: '1.65rem',
+              fontWeight: 800,
+              letterSpacing: '-0.03em',
+              color: 'var(--foreground)',
+              lineHeight: 1.15
             }}>
-              Discover your NextHood
+              Discover Everything Around You
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
-              Real-time local stock tracking, dispatches, and delivery.
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.25rem', fontWeight: 500 }}>
+              Real-time local inventory & dispatches near you.
             </p>
           </div>
 
           {/* Search Inputs & Quick Filters */}
-          <div style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: '#fafbfb' }}>
+          <div style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
             <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
                 <input
                   type="text"
-                  placeholder="Search products, brands, or shops..."
+                  placeholder="Search foods, cakes, pharmacy..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                   style={{
                     width: '100%',
-                    padding: '0.75rem 1rem 0.75rem 2.25rem',
-                    borderRadius: '12px',
-                    border: '1px solid var(--border)',
+                    padding: '0.75rem 2rem 0.75rem 2.25rem',
+                    borderRadius: '16px',
+                    border: '1px solid rgba(226, 232, 240, 0.8)',
                     outline: 'none',
                     fontSize: '0.9rem',
+                    fontWeight: 500,
                     backgroundColor: '#ffffff',
                     transition: 'var(--transition)'
                   }}
                   disabled={searching}
                 />
+                <button
+                  onClick={handleVoiceInputSimulate}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '12px',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="Simulate Voice Search"
+                >
+                  <Mic size={14} />
+                </button>
               </div>
               <motion.button
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => handleSearch()}
                 style={{
                   padding: '0 1.25rem',
                   backgroundColor: 'var(--primary)',
                   color: '#ffffff',
                   border: 'none',
-                  borderRadius: '12px',
-                  fontWeight: 600,
+                  borderRadius: '16px',
+                  fontWeight: 700,
                   fontSize: '0.9rem',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.15)'
                 }}
                 disabled={searching}
               >
@@ -298,13 +335,39 @@ export default function CustomerHomePage() {
                 </motion.button>
               ))}
             </div>
+
+            {/* Premium CTA Link to Sourcing Assistant */}
+            <Link href="/customer/ai-assistant" style={{ textDecoration: 'none', marginTop: '4px' }}>
+              <motion.div
+                whileHover={{ y: -1, scale: 1.01 }}
+                whileTap={{ scale: 0.99 }}
+                style={{
+                  background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(52, 211, 153, 0.04) 100%)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  borderRadius: '14px',
+                  padding: '0.65rem 1rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <Sparkles size={12} className="text-primary" />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#065f46' }}>Query AI Sourcing Sensation</span>
+                </div>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>
+                  Sourcing ➔
+                </span>
+              </motion.div>
+            </Link>
           </div>
 
           {/* Location Status & Results list */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem 2rem' }}>
             {locationLoading && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
-                <div className="shimmer skeleton-image" style={{ height: '90px' }}></div>
+                <div className="shimmer skeleton-image" style={{ height: '90px', borderRadius: '16px' }}></div>
                 <div className="shimmer skeleton-text"></div>
                 <div className="shimmer skeleton-text"></div>
               </div>
@@ -363,9 +426,9 @@ export default function CustomerHomePage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
                   {searching && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-                      <div className="shimmer skeleton-image" style={{ height: '80px' }}></div>
-                      <div className="shimmer skeleton-image" style={{ height: '80px' }}></div>
-                      <div className="shimmer skeleton-image" style={{ height: '80px' }}></div>
+                      <div className="shimmer skeleton-image" style={{ height: '80px', borderRadius: '16px' }}></div>
+                      <div className="shimmer skeleton-image" style={{ height: '80px', borderRadius: '16px' }}></div>
+                      <div className="shimmer skeleton-image" style={{ height: '80px', borderRadius: '16px' }}></div>
                     </div>
                   )}
 
@@ -380,17 +443,18 @@ export default function CustomerHomePage() {
                     const isSelected = selectedBusiness?.id === biz.id;
                     return (
                       <motion.div
-                        whileHover={{ y: -2 }}
+                        whileHover={{ y: -3, scale: 1.01, boxShadow: '0 12px 25px rgba(15,23,42,0.06)' }}
+                        whileTap={{ scale: 0.99 }}
                         key={biz.id}
                         onClick={() => setSelectedBusiness(biz)}
                         style={{
-                          padding: '1.15rem',
+                          padding: '1.25rem',
                           border: `1.5px solid ${isSelected ? 'var(--primary)' : 'rgba(226, 232, 240, 0.7)'}`,
-                          borderRadius: '16px',
+                          borderRadius: '20px',
                           cursor: 'pointer',
                           backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.02)' : '#ffffff',
-                          boxShadow: isSelected ? '0 4px 20px rgba(16, 185, 129, 0.04)' : 'var(--shadow-sm)',
-                          transition: 'border-color 0.2s ease, background-color 0.2s ease'
+                          boxShadow: '0 4px 15px rgba(15,23,42,0.02)',
+                          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
@@ -398,7 +462,7 @@ export default function CustomerHomePage() {
                             {biz.name}
                           </h4>
                           <span style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700, flexShrink: 0, marginLeft: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                            <MapPin size={12} /> {(biz.distance / 1000).toFixed(1)} km
+                            <Navigation size={11} /> {(biz.distance / 1000).toFixed(1)} km
                           </span>
                         </div>
                         
@@ -432,8 +496,18 @@ export default function CustomerHomePage() {
           </div>
         </aside>
 
-        {/* Right Map Canvas */}
-        <section style={{ flex: 1, position: 'relative', height: '100%' }}>
+        {/* Right Map Canvas wrapped in premium container */}
+        <section style={{
+          flex: 1,
+          position: 'relative',
+          height: 'calc(100% - 2rem)',
+          margin: '1rem',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          border: '1px solid rgba(226, 232, 240, 0.8)',
+          boxShadow: '0 12px 40px rgba(15,23,42,0.06)',
+          zIndex: 5
+        }}>
           {coords ? (
             <Map
               userLat={coords.lat}
@@ -491,7 +565,7 @@ export default function CustomerHomePage() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '1rem',
-                  boxShadow: '0 20px 40px rgba(0, 0, 0, 0.08)'
+                  boxShadow: '0 8px 32px rgba(15,23,42,0.08)'
                 }}>
                   <div style={{ display: 'flex', gap: '1.25rem' }}>
                     {selectedBusiness.photoUrl && (
@@ -501,7 +575,7 @@ export default function CustomerHomePage() {
                         style={{
                           width: '80px',
                           height: '80px',
-                          borderRadius: '12px',
+                          borderRadius: '16px',
                           objectFit: 'cover',
                           flexShrink: 0
                         }}
@@ -512,7 +586,7 @@ export default function CustomerHomePage() {
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
                           <h3 style={{
                             fontFamily: 'var(--font-display)',
-                            fontWeight: 700,
+                            fontWeight: 800,
                             fontSize: '1.15rem',
                             lineHeight: '1.3',
                             color: 'var(--foreground)',
@@ -552,6 +626,7 @@ export default function CustomerHomePage() {
                         </div>
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                          <span>👤 <strong>Owner Name:</strong> {selectedBusinessDetails?.ownerName || 'Merchant Partner'}</span>
                           <span>📍 <strong>Address:</strong> {selectedBusinessDetails?.address || selectedBusiness.address || 'Address not listed'}</span>
                           <span>🕒 <strong>Hours:</strong> {selectedBusinessDetails?.openingHours || (selectedBusiness as any).openingHours || 'Not Available'}</span>
                           <span>🛍️ <strong>Stock:</strong> {selectedBusinessProducts.length || (selectedBusiness as any).productsCount || 0} unique items online</span>
@@ -578,7 +653,7 @@ export default function CustomerHomePage() {
                         <Link
                           href={`/customer/shop/${selectedBusinessDetails?.sellerId || selectedBusiness.id}`}
                           className="btn btn-primary"
-                          style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', borderRadius: '10px' }}
+                          style={{ padding: '0.5rem 1rem', fontSize: '0.75rem', borderRadius: '12px' }}
                         >
                           Explore Shop Menu
                         </Link>
