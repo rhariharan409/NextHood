@@ -450,10 +450,10 @@ export default function CustomerHomePage() {
                         onClick={() => setSelectedBusiness(biz)}
                         style={{
                           padding: '1.25rem',
-                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'rgba(226, 232, 240, 0.7)'}`,
+                          border: `1.5px solid ${isSelected ? 'var(--primary)' : 'var(--border)'}`,
                           borderRadius: '20px',
                           cursor: 'pointer',
-                          backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.02)' : '#ffffff',
+                          backgroundColor: isSelected ? 'rgba(16, 185, 129, 0.04)' : 'var(--surface)',
                           boxShadow: '0 4px 15px rgba(15,23,42,0.02)',
                           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)'
                         }}
@@ -505,7 +505,7 @@ export default function CustomerHomePage() {
           margin: '1rem',
           borderRadius: '24px',
           overflow: 'hidden',
-          border: '1px solid rgba(226, 232, 240, 0.8)',
+          border: '1px solid var(--border)',
           boxShadow: '0 12px 40px rgba(15,23,42,0.06)',
           zIndex: 5
         }}>
@@ -521,7 +521,7 @@ export default function CustomerHomePage() {
             <div style={{
               width: '100%',
               height: '100%',
-              backgroundColor: '#f8fafc',
+              backgroundColor: 'var(--background)',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
