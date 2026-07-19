@@ -593,7 +593,15 @@ tr:hover {
   color: #94a3b8 !important;
 }
 
-/* Intercept and override inline styled white backgrounds globally in dark mode */
+/* Intercept and override inline styled white/gray backgrounds globally in dark mode */
+[data-theme='dark'] div[style*="background-color: rgb(255, 255, 255)"],
+[data-theme='dark'] div[style*="background-color: rgb(255,255,255)"],
+[data-theme='dark'] div[style*="background: rgb(255, 255, 255)"],
+[data-theme='dark'] div[style*="background: rgb(255,255,255)"],
+[data-theme='dark'] tr[style*="background-color: rgb(255, 255, 255)"],
+[data-theme='dark'] tr[style*="background-color: rgb(255,255,255)"],
+[data-theme='dark'] button[style*="background-color: rgb(255, 255, 255)"],
+[data-theme='dark'] button[style*="background-color: rgb(255,255,255)"],
 [data-theme='dark'] div[style*="background-color: '#ffffff'"],
 [data-theme='dark'] div[style*="backgroundColor: '#ffffff'"],
 [data-theme='dark'] div[style*="background-color:#ffffff"],
@@ -606,7 +614,6 @@ tr:hover {
 [data-theme='dark'] div[style*="background:#ffffff"],
 [data-theme='dark'] div[style*="background: '#fff'"],
 [data-theme='dark'] div[style*="background:#fff"],
-[data-theme='dark'] div[style*="background: '#ffffff'"],
 [data-theme='dark'] tr[style*="background-color: '#ffffff'"],
 [data-theme='dark'] tr[style*="backgroundColor: '#ffffff'"],
 [data-theme='dark'] button[style*="background-color: '#ffffff'"],
@@ -615,6 +622,16 @@ tr:hover {
   background: var(--surface) !important;
 }
 
+[data-theme='dark'] div[style*="background-color: rgb(248, 250, 252)"],
+[data-theme='dark'] div[style*="background-color: rgb(248,250,252)"],
+[data-theme='dark'] div[style*="background: rgb(248, 250, 252)"],
+[data-theme='dark'] div[style*="background: rgb(248,250,252)"],
+[data-theme='dark'] div[style*="background-color: rgb(250, 251, 251)"],
+[data-theme='dark'] div[style*="background-color: rgb(250,251,251)"],
+[data-theme='dark'] div[style*="background: rgb(250, 251, 251)"],
+[data-theme='dark'] div[style*="background: rgb(250,251,251)"],
+[data-theme='dark'] tr[style*="background-color: rgb(248, 250, 252)"],
+[data-theme='dark'] tr[style*="background-color: rgb(248,250,252)"],
 [data-theme='dark'] div[style*="background-color: '#f8fafc'"],
 [data-theme='dark'] div[style*="backgroundColor: '#f8fafc'"],
 [data-theme='dark'] div[style*="background-color:#f8fafc"],
@@ -623,7 +640,6 @@ tr:hover {
 [data-theme='dark'] div[style*="background:#f8fafc"],
 [data-theme='dark'] div[style*="background: '#fafbfb'"],
 [data-theme='dark'] div[style*="background-color: '#fafbfb'"],
-[data-theme='dark'] div[style*="background: '#f8fafc'"],
 [data-theme='dark'] tr[style*="background-color: '#f8fafc'"],
 [data-theme='dark'] tr[style*="backgroundColor: '#f8fafc'"] {
   background-color: var(--surface-2) !important;
