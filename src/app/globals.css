@@ -196,25 +196,27 @@ body::after {
 }
 
 .btn-primary {
-  background-color: var(--primary);
-  color: #ffffff;
+  background: linear-gradient(135deg, #10B981, #059669) !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2) !important;
 }
 
 .btn-primary:hover {
-  background-color: var(--primary-hover);
-  transform: translateY(-1px);
+  transform: translateY(-1.5px) scale(1.02) !important;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35) !important;
 }
 
 .btn-secondary {
-  background-color: var(--secondary);
+  background-color: var(--surface-2);
   border-color: var(--border);
   color: var(--foreground);
 }
 
 .btn-secondary:hover {
-  background-color: #ffffff;
+  background-color: var(--surface);
   border-color: var(--border-hover);
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
 }
 
 .btn-large {
@@ -225,17 +227,17 @@ body::after {
 
 /* Card Styling */
 .card {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   padding: 2.5rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow);
   transition: var(--transition);
 }
 
 .card:hover {
   border-color: var(--border-hover);
-  box-shadow: var(--shadow-premium);
+  box-shadow: var(--shadow);
   transform: translateY(-4px);
 }
 
@@ -258,7 +260,7 @@ body::after {
   padding: 0.875rem 1rem;
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
-  background-color: var(--secondary);
+  background-color: var(--input-bg);
   font-family: var(--font-family);
   font-size: 0.95rem;
   color: var(--foreground);
@@ -268,7 +270,7 @@ body::after {
 
 .form-input:focus {
   border-color: var(--primary);
-  background-color: #ffffff;
+  background-color: var(--input-bg);
   box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
 }
 
@@ -425,4 +427,127 @@ body::after {
 
 .animate-pulse-soft {
   animation: softPulse 2s infinite ease-in-out;
+}
+
+/* ====================================================
+   GLOBAL DESIGN SYSTEM OVERRIDES (THEME VARIABLE BINDINGS)
+   ==================================================== */
+
+.card,
+.glass-card,
+.summary-card,
+.checkout-card,
+.shop-card,
+.settings-card,
+aside.card,
+div.card,
+section.card {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--shadow) !important;
+}
+
+.glass-card {
+  background: var(--glass-bg) !important;
+  backdrop-filter: var(--glass-blur) !important;
+  -webkit-backdrop-filter: var(--glass-blur) !important;
+  border: 1px solid var(--glass-border) !important;
+}
+
+/* Ensure headings and body text use the variables */
+h1, h2, h3, h4, h5, h6 {
+  color: var(--foreground) !important;
+}
+
+p, span, strong, label, li {
+  color: var(--foreground);
+}
+
+.text-muted, 
+span.text-muted, 
+p.text-muted, 
+div.text-muted {
+  color: var(--text-secondary) !important;
+}
+
+/* Input Fields and Forms */
+input, textarea, select {
+  background-color: var(--input-bg) !important;
+  color: var(--foreground) !important;
+  border: 1px solid var(--border) !important;
+}
+
+input::placeholder, textarea::placeholder {
+  color: var(--text-secondary) !important;
+  opacity: 0.8;
+}
+
+/* Thin Rounded Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.2);
+  border-radius: 10px;
+}
+
+[data-theme='dark'] ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary) !important;
+}
+
+/* Dark glass tables styling */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--glass-bg) !important;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+th, td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  color: var(--foreground) !important;
+}
+
+th {
+  background-color: rgba(16, 185, 129, 0.08) !important;
+  font-weight: 700;
+}
+
+tr:nth-child(even) {
+  background-color: rgba(255, 255, 255, 0.02) !important;
+}
+
+tr:hover {
+  background-color: rgba(16, 185, 129, 0.04) !important;
+  transition: background-color 0.2s ease;
+}
+
+/* Skeletons */
+[data-theme='dark'] .shimmer {
+  background: linear-gradient(90deg, #1e293b 25%, #334155 50%, #1e293b 75%) !important;
+  background-size: 200% 100% !important;
+  animation: shimmer 1.5s infinite !important;
+}
+
+[data-theme='dark'] .skeleton-image,
+[data-theme='dark'] .skeleton-title,
+[data-theme='dark'] .skeleton-text,
+[data-theme='dark'] .skeleton-button {
+  border-radius: 16px !important;
 }
