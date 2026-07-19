@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 };
 
 import { CartProvider } from "@/context/CartContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 export default function RootLayout({
   children,
@@ -28,9 +29,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${plusJakartaSans.variable} ${geistMono.variable}`}>
       <body style={{ fontFamily: "var(--font-plus-jakarta-sans), sans-serif" }}>
-        <CartProvider>
-          {children}
-        </CartProvider>
+        <ThemeProvider>
+          <CartProvider>
+            {children}
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

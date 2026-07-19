@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/Header';
 import Link from 'next/link';
+import { useTheme } from '@/context/ThemeContext';
+import { motion } from 'framer-motion';
 
 interface User {
   id: string;
@@ -47,6 +49,7 @@ interface OrderRecord {
 
 export default function SellerHomePage() {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<OrderRecord[]>([]);
@@ -509,6 +512,71 @@ export default function SellerHomePage() {
                   style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Profile Settings & Theme Switch */}
+          <div className="card" style={{ backgroundColor: 'var(--card-bg)', padding: '2rem', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '1.5rem', borderRadius: 'var(--radius-lg)', boxShadow: '0 4px 30px rgba(0,0,0,0.02)', marginTop: '1.5rem' }}>
+            <div>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '1.25rem', fontWeight: 700, marginBottom: '0.25rem', color: 'var(--foreground)' }}>
+                Shop Settings & Profile
+              </h2>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                Manage store options and application theme preferences.
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+              <div>
+                <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--foreground)' }}>Display Theme</strong>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Choose light mode or dark mode.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)' }}>🌞 Light</span>
+                
+                <button
+                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                  style={{
+                    width: '48px',
+                    height: '24px',
+                    borderRadius: '12px',
+                    backgroundColor: theme === 'dark' ? 'var(--primary)' : '#e2e8f0',
+                    border: 'none',
+                    cursor: 'pointer',
+                    position: 'relative',
+                    padding: '2px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    transition: 'background-color 0.3s ease'
+                  }}
+                >
+                  <motion.div
+                    layout
+                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                    style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: '#ffffff',
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      position: 'absolute',
+                      left: theme === 'dark' ? '26px' : '2px'
+                    }}
+                  />
+                </button>
+
+                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)' }}>🌙 Dark</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--foreground)' }}>Merchant Account</strong>
+                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Logged in as {user.name} ({user.email})</span>
+              </div>
+              <button onClick={handleLogout} className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.8rem', color: '#ef4444', borderColor: '#ef4444' }}>
+                Logout
+              </button>
             </div>
           </div>
 

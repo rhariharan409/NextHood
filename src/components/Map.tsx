@@ -6,6 +6,8 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Business } from '@/lib/overpass';
 
+import { useTheme } from '@/context/ThemeContext';
+
 interface MapProps {
   userLat: number;
   userLon: number;
@@ -200,6 +202,7 @@ export default function Map({
   onSelectBusiness,
 }: MapProps) {
   const userPosition: [number, number] = [userLat, userLon];
+  const { theme } = useTheme();
 
   return (
     <div style={{ width: '100%', height: '100%', position: 'relative' }}>
@@ -210,8 +213,8 @@ export default function Map({
         zoomControl={false}
       >
         <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+          url={theme === 'dark' ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'}
         />
 
         {/* User position marker */}

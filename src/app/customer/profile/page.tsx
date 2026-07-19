@@ -5,6 +5,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import { useCart } from '@/context/CartContext';
+import { useTheme } from '@/context/ThemeContext';
+import { motion } from 'framer-motion';
 
 interface User {
   id: string;
@@ -51,6 +53,7 @@ export default function ProfileDashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const { addToCart, clearCart, cartCount } = useCart();
+  const { theme, setTheme } = useTheme();
 
   // Active User State
   const [user, setUser] = useState<User | null>(null);
@@ -817,10 +820,43 @@ export default function ProfileDashboardPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
                     <div>
-                      <strong style={{ fontSize: '0.95rem', display: 'block' }}>Display Appearance</strong>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Choose light mode or system default.</span>
+                      <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--foreground)' }}>Display Appearance</strong>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Choose light mode or dark mode.</span>
                     </div>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>Light mode</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)' }}>🌞 Light</span>
+                      <button
+                        onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
+                        style={{
+                          width: '48px',
+                          height: '24px',
+                          borderRadius: '12px',
+                          backgroundColor: theme === 'dark' ? 'var(--primary)' : '#e2e8f0',
+                          border: 'none',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          transition: 'background-color 0.3s ease'
+                        }}
+                      >
+                        <motion.div
+                          layout
+                          transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          style={{
+                            width: '20px',
+                            height: '20px',
+                            borderRadius: '50%',
+                            backgroundColor: '#ffffff',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                            position: 'absolute',
+                            left: theme === 'dark' ? '26px' : '2px'
+                          }}
+                        />
+                      </button>
+                      <span style={{ fontSize: '0.8rem', fontWeight: 600, color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)' }}>🌙 Dark</span>
+                    </div>
                   </div>
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
