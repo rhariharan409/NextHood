@@ -531,41 +531,39 @@ export default function SellerHomePage() {
                 <strong style={{ fontSize: '0.95rem', display: 'block', color: 'var(--foreground)' }}>Display Theme</strong>
                 <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Choose light mode or dark mode.</span>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: theme === 'light' ? 'var(--primary)' : 'var(--text-muted)' }}>🌞 Light</span>
-                
-                <button
-                  onClick={() => setTheme(theme === 'light' ? 'dark' : 'light')}
-                  style={{
-                    width: '48px',
-                    height: '24px',
-                    borderRadius: '12px',
-                    backgroundColor: theme === 'dark' ? 'var(--primary)' : '#e2e8f0',
-                    border: 'none',
-                    cursor: 'pointer',
-                    position: 'relative',
-                    padding: '2px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    transition: 'background-color 0.3s ease'
-                  }}
-                >
-                  <motion.div
-                    layout
-                    transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                    style={{
-                      width: '20px',
-                      height: '20px',
-                      borderRadius: '50%',
-                      backgroundColor: '#ffffff',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                      position: 'absolute',
-                      left: theme === 'dark' ? '26px' : '2px'
-                    }}
-                  />
-                </button>
-
-                <span style={{ fontSize: '0.8rem', fontWeight: 600, color: theme === 'dark' ? 'var(--primary)' : 'var(--text-muted)' }}>🌙 Dark</span>
+              <div style={{
+                display: 'flex',
+                backgroundColor: 'var(--nav-bg)',
+                border: '1px solid var(--nav-border)',
+                padding: '4px',
+                borderRadius: '12px'
+              }}>
+                {(['light', 'dark', 'system'] as const).map((t) => {
+                  const isActive = theme === t;
+                  return (
+                    <button
+                      key={t}
+                      onClick={() => setTheme(t)}
+                      style={{
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '8px',
+                        backgroundColor: isActive ? 'var(--nav-active-bg)' : 'transparent',
+                        color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                        fontSize: '0.75rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.25rem',
+                        transition: 'all 0.2s ease',
+                        boxShadow: isActive ? '0 2px 8px rgba(0,0,0,0.05)' : 'none',
+                        border: isActive ? '1px solid var(--nav-active-border)' : '1px solid transparent'
+                      }}
+                    >
+                      {t === 'light' ? '🌞 Light' : t === 'dark' ? '🌙 Dark' : '💻 System'}
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

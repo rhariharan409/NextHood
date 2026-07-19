@@ -2,30 +2,27 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-type Theme = 'light' | 'dark';
+type Theme = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   theme: Theme;
   setTheme: (theme: Theme) => void;
-  toggleTheme: () => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>('light');
+  const [theme, setThemeState] = useState<Theme>('system');
   const [isMounted, setIsMounted] = useState(false);
 
-  // Initialize theme from localStorage on mount
   useEffect(() => {
+    // 1. Initial load from localStorage
     try {
       const savedTheme = localStorage.getItem('nexthood_theme') as Theme;
-      if (savedTheme === 'light' || savedTheme === 'dark') {
+      if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
         setThemeState(savedTheme);
-        document.documentElement.setAttribute('data-theme', savedTheme);
       } else {
-        // Fallback to light
-        document.documentElement.setAttribute('data-theme', 'light');
+        setThemeState('system');
       }
     } catch (e) {
       console.error('Error loading theme:', e);
@@ -33,22 +30,50 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setIsMounted(true);
   }, []);
 
+  // 2. Synchronize theme with data-theme attribute on root
+  useEffect(() => {
+    if (!isMounted) return;
+
+    const root = document.documentElement;
+
+    const applyTheme = (t: Theme) => {
+      if (t === 'system') {
+        const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        root.setAttribute('data-theme', systemPrefersDark ? 'dark' : 'light');
+      } else {
+        root.setAttribute('data-theme', t);
+      }
+    };
+
+    applyTheme(theme);
+
+    // 3. Listen to system preference changes if 'system' is selected
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = () => applyTheme('system');
+      
+      // Modern listener support
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      } else {
+        mediaQuery.addListener(handleChange);
+        return () => mediaQuery.removeListener(handleChange);
+      }
+    }
+  }, [theme, isMounted]);
+
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     try {
       localStorage.setItem('nexthood_theme', newTheme);
-      document.documentElement.setAttribute('data-theme', newTheme);
     } catch (e) {
       console.error('Error saving theme:', e);
     }
   };
 
-  const toggleTheme = () => {
-    setTheme(theme === 'light' ? 'dark' : 'light');
-  };
-
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggleTheme }}>
+    <ThemeContext.Provider value={{ theme, setTheme }}>
       {isMounted ? children : <div style={{ visibility: 'hidden' }}>{children}</div>}
     </ThemeContext.Provider>
   );

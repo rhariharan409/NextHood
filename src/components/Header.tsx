@@ -30,17 +30,21 @@ export default function Header({ showGetStarted = false, currentUser = null, onL
   return (
     <header className="no-print" style={{
       position: 'sticky',
-      top: 0,
-      width: '100%',
+      top: '1.25rem',
+      width: '95%',
+      maxWidth: '1200px',
+      margin: '0 auto 1.25rem auto',
       zIndex: 100,
-      backgroundColor: 'rgba(255, 255, 255, 0.75)',
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)',
-      borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
-      boxShadow: '0 4px 30px rgba(0, 0, 0, 0.01)'
+      backgroundColor: 'var(--glass-bg)',
+      backdropFilter: 'var(--glass-blur)',
+      WebkitBackdropFilter: 'var(--glass-blur)',
+      border: '1px solid var(--glass-border)',
+      boxShadow: 'var(--glass-shadow)',
+      borderRadius: '20px',
+      transition: 'background-color 300ms ease, border-color 300ms ease, box-shadow 300ms ease'
     }}>
       <div className="container" style={{
-        height: '72px',
+        height: '70px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
@@ -90,10 +94,11 @@ export default function Header({ showGetStarted = false, currentUser = null, onL
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            backgroundColor: 'rgba(241, 245, 249, 0.6)',
+            backgroundColor: 'var(--nav-bg)',
             padding: '4px',
             borderRadius: '12px',
-            border: '1px solid rgba(226, 232, 240, 0.6)'
+            border: '1px solid var(--nav-border)',
+            transition: 'background-color 300ms ease, border-color 300ms ease'
           }}>
             {navItems.map((item) => {
               const Icon = item.icon;

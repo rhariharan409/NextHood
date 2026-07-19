@@ -206,14 +206,14 @@ export default function CustomerHomePage() {
         {/* Left Search & Detail Panel */}
         <aside style={{
           width: '420px',
-          backgroundColor: 'rgba(255, 255, 255, 0.45)',
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          borderRight: '1px solid rgba(255, 255, 255, 0.25)',
+          backgroundColor: 'var(--glass-bg)',
+          backdropFilter: 'var(--glass-blur)',
+          WebkitBackdropFilter: 'var(--glass-blur)',
+          borderRight: '1px solid var(--glass-border)',
           display: 'flex',
           flexDirection: 'column',
           zIndex: 10,
-          boxShadow: '4px 0 30px rgba(15,23,42,0.02)',
+          boxShadow: 'var(--glass-shadow)',
           flexShrink: 0,
         }}>
           {/* Welcome and Tagline Header */}
@@ -244,7 +244,7 @@ export default function CustomerHomePage() {
           </div>
 
           {/* Search Inputs & Quick Filters */}
-          <div style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid rgba(226, 232, 240, 0.8)', backgroundColor: 'rgba(255, 255, 255, 0.2)' }}>
+          <div style={{ padding: '1.25rem 2rem', display: 'flex', flexDirection: 'column', gap: '1rem', borderBottom: '1px solid var(--border)', backgroundColor: 'var(--glass-bg)', backdropFilter: 'var(--glass-blur)' }}>
             <div style={{ display: 'flex', gap: '0.5rem', position: 'relative' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '14px', color: 'var(--text-muted)' }} />
@@ -258,11 +258,12 @@ export default function CustomerHomePage() {
                     width: '100%',
                     padding: '0.75rem 2rem 0.75rem 2.25rem',
                     borderRadius: '16px',
-                    border: '1px solid rgba(226, 232, 240, 0.8)',
+                    border: '1px solid var(--border)',
                     outline: 'none',
                     fontSize: '0.9rem',
                     fontWeight: 500,
-                    backgroundColor: '#ffffff',
+                    backgroundColor: 'var(--input-bg)',
+                    color: 'var(--foreground)',
                     transition: 'var(--transition)'
                   }}
                   disabled={searching}
@@ -320,8 +321,8 @@ export default function CustomerHomePage() {
                   }}
                   disabled={searching}
                   style={{
-                    backgroundColor: searchQuery === item.query ? 'rgba(16, 185, 129, 0.08)' : '#ffffff',
-                    border: `1px solid ${searchQuery === item.query ? 'var(--primary)' : 'rgba(226, 232, 240, 0.8)'}`,
+                    backgroundColor: searchQuery === item.query ? 'rgba(16, 185, 129, 0.08)' : 'var(--input-bg)',
+                    border: `1px solid ${searchQuery === item.query ? 'var(--primary)' : 'var(--border)'}`,
                     color: searchQuery === item.query ? 'var(--primary)' : 'var(--text-muted)',
                     borderRadius: '20px',
                     padding: '0.35rem 0.85rem',

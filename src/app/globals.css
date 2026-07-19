@@ -38,23 +38,28 @@
 }
 
 [data-theme='dark'] {
-  --background: #0b1220;
+  --background: #08111f;
   --foreground: #f8fafc;
   
-  --secondary: rgba(17, 24, 39, 0.55);
+  --secondary: rgba(15, 23, 42, 0.65);
   --border: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.15);
   --text-muted: #94a3b8;
 
-  --bg-gradient: linear-gradient(180deg, #0b1220 0%, #111827 50%, #1f2937 100%);
-  --glass-bg: rgba(17, 24, 39, 0.55);
+  --bg-gradient: linear-gradient(180deg, #08111f 0%, #111827 50%, #1f2937 100%);
+  --glass-bg: rgba(15, 23, 42, 0.65);
   --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --glass-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
   --glass-blur: blur(24px);
 
-  --card-bg: rgba(17, 24, 39, 0.55);
+  --card-bg: rgba(15, 23, 42, 0.65);
   --card-border: rgba(255, 255, 255, 0.08);
-  --input-bg: rgba(11, 18, 32, 0.6);
+  --input-bg: rgba(15, 23, 42, 0.7);
+
+  --nav-bg: rgba(15, 23, 42, 0.65);
+  --nav-border: rgba(255, 255, 255, 0.08);
+  --nav-active-bg: rgba(16, 185, 129, 0.15);
+  --nav-active-border: rgba(16, 185, 129, 0.4);
 }
 
 * {
