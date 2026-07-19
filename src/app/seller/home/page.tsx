@@ -298,27 +298,27 @@ export default function SellerHomePage() {
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Active Products</span>
                 <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{productsCount}</strong>
               </div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Stock Units</span>
                 <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{totalInventory} units</strong>
               </div>
-              <div style={{ padding: '1rem', background: lowStockAlertsCount > 0 ? '#fef2f2' : '#f8fafc', borderRadius: '8px', border: `1px solid ${lowStockAlertsCount > 0 ? '#fca5a5' : '#e2e8f0'}` }}>
+              <div style={{ padding: '1rem', background: lowStockAlertsCount > 0 ? 'rgba(239, 68, 68, 0.08)' : 'var(--surface-2)', borderRadius: '8px', border: `1px solid ${lowStockAlertsCount > 0 ? 'rgba(239, 68, 68, 0.2)' : 'var(--border)'}` }}>
                 <span style={{ fontSize: '0.75rem', color: lowStockAlertsCount > 0 ? '#ef4444' : 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Low Stock Alerts</span>
                 <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem', color: lowStockAlertsCount > 0 ? '#ef4444' : 'var(--foreground)' }}>{lowStockAlertsCount} alerts</strong>
               </div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Inventory Value</span>
                 <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>₹{inventoryValue.toFixed(2)}</strong>
               </div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Orders Received</span>
                 <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem' }}>{orders.length}</strong>
               </div>
-              <div style={{ padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ padding: '1rem', background: 'var(--surface-2)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'block', fontWeight: 600 }}>Total Revenue Earned</span>
                 <strong style={{ fontSize: '1.5rem', display: 'block', marginTop: '0.25rem', color: '#10b981' }}>₹{revenue}</strong>
               </div>

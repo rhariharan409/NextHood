@@ -118,6 +118,7 @@ export default function OptimizedImage({
   const hasValidImage = src && src.trim() !== '' && src !== 'null' && src !== 'undefined';
 
   if (!hasValidImage || error) {
+    const isSmall = style && (style.height || style.maxHeight);
     return (
       <div
         className={className}
@@ -130,18 +131,20 @@ export default function OptimizedImage({
           color: config.textColor,
           width: '100%',
           height: '100%',
-          minHeight: '120px',
+          minHeight: isSmall ? 'auto' : '120px',
           borderRadius: '12px',
-          padding: '1rem',
+          padding: isSmall ? '0.25rem' : '1rem',
           userSelect: 'none',
           boxSizing: 'border-box',
           ...style
         }}
       >
-        <span style={{ fontSize: '2.5rem', marginBottom: '0.25rem' }}>{config.emoji}</span>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
-          {config.label}
-        </span>
+        <span style={{ fontSize: isSmall ? '1.25rem' : '2.5rem', lineHeight: 1 }}>{config.emoji}</span>
+        {!isSmall && (
+          <span style={{ fontSize: '0.85rem', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', marginTop: '0.25rem' }}>
+            {config.label}
+          </span>
+        )}
       </div>
     );
   }
